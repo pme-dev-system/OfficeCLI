@@ -1,124 +1,124 @@
 ---
 name: officecli-pptx
-description: "Use this skill any time a .pptx file is involved -- as input, output, or both. This includes: creating slide decks, pitch decks, or presentations; reading, parsing, or extracting text from any .pptx file; editing, modifying, or updating existing presentations; combining or splitting slide files; working with templates, layouts, speaker notes, or comments. Trigger whenever the user mentions 'deck', 'slides', 'presentation', 'pitch', or references a .pptx filename."
+description: "このスキルは、.pptx ファイルが入力・出力のいずれか（または両方）で関わるあらゆる場面で使用します。対象には次が含まれます: スライドデック、ピッチデック、プレゼンテーションの作成；任意の .pptx ファイルからのテキストの読み取り・解析・抽出；既存プレゼンテーションの編集・修正・更新；スライドファイルの結合や分割；テンプレート、レイアウト、スピーカーノート、コメントの操作。ユーザーが 'deck'、'slides'、'presentation'、'pitch' に言及した場合、または .pptx ファイル名を参照した場合は必ず発動します。"
 ---
 
-# OfficeCLI PPTX Skill
+# OfficeCLI PPTX スキル
 
-## Setup
+## セットアップ
 
-If `officecli` is missing:
+`officecli` が見つからない場合：
 
 - **macOS / Linux**: `curl -fsSL https://d.officecli.ai/install.sh | bash`
 - **Windows (PowerShell)**: `irm https://d.officecli.ai/install.ps1 | iex`
 
-Verify with `officecli --version` (open a new terminal if PATH hasn't picked up). If install fails, download a binary from https://github.com/iOfficeAI/OfficeCLI/releases.
+`officecli --version` で確認してください（PATH が反映されていない場合は新しいターミナルを開いてください）。インストールに失敗した場合は https://github.com/iOfficeAI/OfficeCLI/releases からバイナリをダウンロードしてください。
 
-## ⚠️ Help-First Rule
+## ⚠️ Help 優先ルール
 
-**This skill teaches what good slides look like, not every command flag. When a property name, enum value, or alias is uncertain, consult help BEFORE guessing.**
+**このスキルは「良いスライドとは何か」を教えるものであり、すべてのコマンドフラグを網羅するものではありません。プロパティ名、列挙値、エイリアスに確信が持てない場合は、推測する前にまず help を参照してください。**
 
 ```bash
-officecli help pptx                         # List all pptx elements
-officecli help pptx <element>               # Full element schema (e.g. shape, chart, animation, connector, zoom, group)
-officecli help pptx <verb> <element>        # Verb-scoped (e.g. add shape, set slide)
-officecli help pptx <element> --json        # Machine-readable schema
+officecli help pptx                         # pptx の全要素を一覧表示
+officecli help pptx <element>               # 要素の完全なスキーマ（例: shape, chart, animation, connector, zoom, group）
+officecli help pptx <verb> <element>        # 動詞スコープのヘルプ（例: add shape, set slide）
+officecli help pptx <element> --json        # 機械可読なスキーマ
 ```
 
-Help reflects the installed CLI version. When skill and help disagree, **help is authoritative**. Triggers to run help immediately: `UNSUPPORTED props:` warning, unknown animation preset, `connector.shape=` enum drifts, prop-vs-alias (`lineWidth` vs `line.width`, `color` vs `font.color`).
+help はインストール済みの CLI バージョンを反映します。スキルの記載と help が食い違う場合、**help が正です**。即座に help を実行すべきトリガー: `UNSUPPORTED props:` 警告、未知のアニメーションプリセット、`connector.shape=` の列挙値のずれ、プロパティ名 vs エイリアスの混同（`lineWidth` vs `line.width`、`color` vs `font.color`）。
 
-## Shell & Execution Discipline
+## シェルと実行の規律
 
-**Shell quoting (zsh / bash).** ALWAYS quote element paths (`"/slide[1]/..."`) — zsh globs unquoted `[1]` to `no matches found`. Escaping happens at three layers — keep them separate (the CLI handles the second for you):
+**シェルクォーティング (zsh / bash)。** 要素パスは常にクォートしてください（`"/slide[1]/..."`）— zsh はクォートされていない `[1]` をグロブとして扱い `no matches found` になります。エスケープは 3 層で行われ、それぞれ分離して考える必要があります（2 層目は CLI が代わりに処理します）:
 
-1. **Shell.** `$` in a value still belongs to the shell — single-quote the whole value: `--prop text='$15M'`. Double-quoted `"$15M"` gets expanded to `M`. The CLI does NOT unescape `\$` for you.
-2. **CLI (`text=`).** The two-char escapes `\n` and `\t` ARE interpreted, consistently across pptx / docx / xlsx — `\n` is a line / paragraph break, `\t` is a tab. To produce a literal backslash-n in text, double it (`\\n`); this is rarely what you want.
-3. **JSON (batch heredoc).** The recipes below pipe `cat <<EOF | officecli batch` **unquoted** so `$SLIDE` / `$FILE` expand inside the body. That same unquoted heredoc also expands a literal `$` in a value: `"$1.42"` silently becomes `.42` and `"$2.4B"` becomes `.4B` (`$1` / `$2` are empty shell params). **Escape currency as `\$`** — `"text":"\$1.42"` — which still lets `$SLIDE` expand. `\n` / `\t` inside the JSON work either way. A fully-quoted `<<'EOF'` protects every `$` but then `$SLIDE` won't expand, so only use it when the body has no shell variables. After writing money values, `view text` and confirm the `$` survived.
+1. **シェル。** 値の中の `$` はシェルに属します — 値全体をシングルクォートしてください: `--prop text='$15M'`。ダブルクォートの `"$15M"` はシェルにより `M` に展開されてしまいます。CLI は `\$` を代わりにアンエスケープしてくれません。
+2. **CLI (`text=`)。** 2 文字のエスケープ `\n` と `\t` は解釈されます — pptx / docx / xlsx を通じて一貫して、`\n` は改行（段落区切り）、`\t` はタブです。テキストに文字通りのバックスラッシュ+n を出したい場合は二重にします（`\\n`）。これが必要になることは稀です。
+3. **JSON (batch heredoc)。** 以下のレシピは `cat <<EOF | officecli batch` を**クォートせずに**パイプし、本体内で `$SLIDE` / `$FILE` を展開させています。同じ理由で、クォートなしの heredoc は値中のリテラル `$` も展開してしまいます: `"$1.42"` は無音のうちに `.42` に、`"$2.4B"` は `.4B` になります（`$1` / `$2` は空のシェルパラメータ）。**通貨は `\$` としてエスケープ**してください — `"text":"\$1.42"` — これなら `$SLIDE` の展開は維持されます。JSON 内の `\n` / `\t` はどちらの書き方でも動作します。全体をクォートした `<<'EOF'` はすべての `$` を保護しますが、その場合 `$SLIDE` も展開されなくなるため、本体にシェル変数が一切ない場合にのみ使ってください。金額を書き込んだ後は `view text` で `$` が生き残っているか確認してください。
 
-If in doubt, `view text` after writing and compare character-for-character.
+迷ったら、書き込み後に `view text` を実行して文字単位で比較してください。
 
-**Incremental execution.** One command → check exit code → continue. A 50-command script that fails at command 3 cascades silently. After any structural op (new slide, chart, animation, connector) run `get` before stacking more.
+**インクリメンタルな実行。** 1 コマンド実行 → 終了コード確認 → 続行。50 コマンドのスクリプトが 3 番目で失敗すると、それが静かに連鎖します。構造的な操作（新規スライド、チャート、アニメーション、コネクタ）の後は、さらに積み上げる前に `get` を実行してください。
 
-## Requirements for Outputs
+## 出力物の要件
 
-These are the deliverable standards every deck MUST meet. Violating any one = not done, regardless of content quality.
+これらは、あらゆるデックが満たすべき納品物の基準です。いずれか一つでも違反すれば、内容の質にかかわらず「未完了」です。
 
-### All decks
+### すべてのデック共通
 
-**One idea per slide.** If a slide needs a second title to explain what it covers, split it. Dense "everything about X" slides lose the audience inside 3 seconds. Use a section divider to group related one-idea slides, not a mega-slide.
+**1 スライド 1 アイデア。** スライドが 2 つ目のタイトルで内容を説明する必要があるなら、分割してください。「X についてのすべて」を詰め込んだ密なスライドは、3 秒以内に聴衆を失います。関連する 1 アイデアのスライドをグループ化するにはセクション区切りを使い、メガスライドにはしないでください。
 
-**Explicit type hierarchy — do NOT rely on theme defaults.** Theme defaults drift between masters. Set sizes explicitly on every text shape.
+**明示的なタイプ階層 — テーマのデフォルトに頼らないこと。** テーマのデフォルトはマスター間でずれます。すべてのテキストシェイプに明示的にサイズを設定してください。
 
-| Element | Minimum | Typical | Min shape height |
+| 要素 | 最小 | 一般的 | シェイプの最小高さ |
 |---|---|---|---|
-| Slide title | **≥ 36pt** bold | 36–44pt | ≥ 2cm |
-| Section / subtitle | ≥ 20pt | 20–24pt | ≥ 1.2cm |
-| Body text | **≥ 18pt** | 18–22pt | ≥ 1cm |
-| Caption / axis label | ≥ 10pt muted | 10–12pt | ≥ 0.6cm |
+| スライドタイトル | **≥ 36pt** 太字 | 36–44pt | ≥ 2cm |
+| セクション / サブタイトル | ≥ 20pt | 20–24pt | ≥ 1.2cm |
+| 本文テキスト | **≥ 18pt** | 18–22pt | ≥ 1cm |
+| キャプション / 軸ラベル | ≥ 10pt ミュート色 | 10–12pt | ≥ 0.6cm |
 
-Rule of thumb: **min shape height ≈ font_pt × 0.05cm**. An 18pt sublabel in a 0.8cm-tall box will overflow — `view annotated` catches this.
+経験則: **シェイプの最小高さ ≈ フォントサイズ(pt) × 0.05cm**。0.8cm 高のボックスに入れた 18pt のサブラベルはオーバーフローします — `view annotated` で検出できます。
 
-Title must be **≥ 2× body size** (36pt over 20pt works; 28pt over 20pt looks timid). Four legit exceptions to body ≥ 18pt: chart axis labels, legends, footer / page number, and ≤ 5-word KPI sublabels (e.g. "Active users"). Descriptive sentences must be ≥ 18pt. Left-align body; center only titles and hero numbers. If "the cards won't fit", drop cards instead of shrinking font.
+タイトルは**本文サイズの 2 倍以上**にしてください（36pt / 20pt は成立しますが、28pt / 20pt では弱く見えます）。本文 ≥ 18pt の正当な例外は 4 つ: チャート軸ラベル、凡例、フッター / ページ番号、5 単語以下の KPI サブラベル（例: "Active users"）。説明文は ≥ 18pt にすること。本文は左揃え、中央揃えはタイトルとヒーロー数値のみ。「カードが収まらない」場合はフォントを縮めるのではなくカードを減らしてください。
 
-**Two fonts max, one palette.** One heading font + one body font (e.g. Georgia + Calibri) — a third *display* face is fine only for big numerals or the cover title, as long as that heading+body pair stays intact. One dominant brand color (60–70% weight) + one supporting + one accent. Never mix 4+ colors in body content. **The palettes and font pairings in Design Principles are a floor, not a menu:** if the user gave brand colors/fonts or an existing template, match those first; otherwise the named sets are calibrated seeds — blend or diverge freely, as long as the result isn't *worse* than them and still clears the contrast floor.
+**フォントは最大 2 種、パレットは 1 つ。** 見出し用フォント 1 つ + 本文用フォント 1 つ（例: Georgia + Calibri）— 3 つ目の*ディスプレイ*書体は、大きな数字表示やカバータイトルのみに限り可（その場合も見出し+本文のペアは維持すること）。ブランドカラーは、支配色 1 つ（重み 60–70%）+ 補助色 1 つ + アクセント 1 つ。本文コンテンツで 4 色以上を混在させないこと。**Design Principles にあるパレットとフォントの組み合わせは床（最低ライン）であり、メニューではありません:** ユーザーがブランドカラー/フォントや既存テンプレートを指定した場合はそちらを優先してください。そうでない場合、記載の組み合わせはキャリブレーション済みの「種」であり、混ぜても離れても構いません — 結果がそれらより*悪く*ならず、コントラストの床をクリアしている限り。
 
-**Every slide carries a non-text visual — one that informs.** Shape, chart, icon, gradient band that carries meaning, not decoration. A bullet-only deck is interchangeable with a Word doc. Exceptions: literal quote slides, code blocks, a single summary-table slide.
+**すべてのスライドが情報を伝える非テキストのビジュアルを持つこと。** シェイプ、チャート、アイコン、意味を持つグラデーションバンド — 装飾ではなく。箇条書きだけのデックは Word 文書と入れ替え可能です。例外: 引用のみのスライド、コードブロック、単一のサマリーテーブルスライド。
 
-**Less is more — every element earns its place.** The visual rule above guards against bullet-walls; it is not licence to clutter. Don't pad with decorative stats, icons, or filler sections that don't inform ("data slop"). If a slide feels empty, fix it with layout and whitespace, not invented content — cut scope rather than bulk it up, and flag a larger addition instead of making it unprompted.
+**足すより引く — すべての要素が存在理由を持つこと。** 上記のビジュアルルールは箇条書きの壁を防ぐためのものであり、雑然とさせてよいという許可ではありません。情報を伝えない装飾的な統計、アイコン、埋め草のセクション（「データスロップ」）で埋めないこと。スライドが空に感じる場合は、内容を捏造するのではなくレイアウトと余白で対処してください — スコープを削る方を選び、大きな追加が必要なら勝手に足さずフラグを立てること。
 
-**Speaker notes on every content slide.** `--type notes --prop text="..."`. The speaker needs a script; the audience shouldn't read the slide verbatim.
+**すべてのコンテンツスライドにスピーカーノート。** `--type notes --prop text="..."`。話者にはスクリプトが必要であり、聴衆はスライドをそのまま読み上げられるべきではありません。
 
-**Copy reads human, not AI.** Titles orient on content, not punchline. No "It's not X. It's Y.", no manufactured tension, no faux-insight ("The magic moment"), no one-word drama ("Momentum."). Cut hype adjectives (seamless, robust, game-changing) — let the number carry it.
+**コピーは人間らしく、AI らしくないこと。** タイトルは内容を軸にし、オチを狙わないこと。「X ではない。Y だ。」のような作られた対比、演出された緊張感、偽の洞察（「魔法の瞬間」）、一語のドラマ（「勢い。」）は禁止。誇張形容詞（シームレス、堅牢、ゲームチェンジング）は削り、数字自身に語らせてください。
 
-**Preserve existing templates.** When a file already has a theme and masters, match them. Existing conventions override these guidelines.
+**既存テンプレートを尊重すること。** ファイルに既にテーマとマスターがある場合は、それに合わせてください。既存の慣習がこれらのガイドラインより優先されます。
 
-### Visual delivery floor (applies to EVERY deck)
+### ビジュアル納品の床（すべてのデックに適用）
 
-Before declaring done, the per-slide render (see QA) MUST satisfy:
+完了と宣言する前に、スライド単位のレンダリング（QA 参照）は以下を満たす必要があります:
 
-- **No placeholder tokens rendered as content.** `{{name}}`, `$fy$24`, `<TODO>`, `lorem`, `xxxx`, empty `()`/`[]` in chart titles never appear.
-- **No overflow off-edge, no clipped text in shapes.** `view issues` flags both (`shape_off_slide` + a text-fit hint). To fix a clip: grow the box or shorten the value — never trim content to fit.
-- **Cover carries its orienting elements.** Title + subtitle + presenter/client + date + a brand band or key-takeaway strap — a title-only cover reads as a stub. Generous whitespace around them is still right; rich ≠ crowded.
-- **Contrast.** `view issues` auto-flags the common case — opaque dark text on a shape's own dark fill (`low_contrast`). It can't see the rest: icon / chart-series fills, scheme/inherited colors, or text over a *separate* background shape. So on any fill with brightness < 30% (`1E2761`, `36454F`, deep forest / berry / cherry), still confirm every body run, card body, chart series, and icon is `FFFFFF` or brightness > 80% — mid-gray (`6B7B8D` ≈ 44%) reads on a laptop and vanishes on projection. Spot-check via `view html` after the dark-fill pass.
+- **プレースホルダートークンがコンテンツとしてレンダリングされていないこと。** `{{name}}`、`$fy$24`、`<TODO>`、`lorem`、`xxxx`、チャートタイトル内の空の `()`/`[]` が現れないこと。
+- **端からのオーバーフローや、シェイプ内でのテキストのクリッピングがないこと。** `view issues` が両方をフラグします（`shape_off_slide` + テキストフィットのヒント）。クリップの修正: ボックスを大きくするか値を短くする — コンテンツを収まるように削らないこと。
+- **カバーが方向づけとなる要素を備えていること。** タイトル + サブタイトル + 発表者/クライアント + 日付 + ブランドバンドまたはキーテイクアウェイの帯 — タイトルのみのカバーはスタブに見えます。周囲に余白をたっぷり取るのは正しく、リッチさは詰め込み過ぎとは違います。
+- **コントラスト。** `view issues` は最も一般的なケース — シェイプ自身の濃い塗りの上の不透明な濃い色のテキスト（`low_contrast`）— を自動でフラグします。それ以外（アイコン / チャート系列の塗り、スキーム/継承色、または*別の*背景シェイプの上のテキスト）は検出できません。そのため、明度 30% 未満の塗り（`1E2761`、`36454F`、深い森/ベリー/チェリー系）では、すべての本文ラン、カード本文、チャート系列、アイコンが `FFFFFF` または明度 80% 超であることを確認してください — 中間グレー（`6B7B8D` ≈ 44%）はノートPCでは読めても投影では消えます。濃色塗りのパス後、`view html` でスポットチェックしてください。
 
-If any fails, STOP and fix before declaring done.
+いずれかが失敗した場合は、完了と宣言する前に STOP して修正してください。
 
-## Design Principles
+## デザイン原則
 
-A deck is not a document. The audience has 3 seconds to get each slide. Before adding anything, ask: "If the audience reads only the biggest element and glances once, do they get the point?" If they have to read the bullets, the biggest element is wrong.
+デックは文書ではありません。聴衆は各スライドを把握するのに 3 秒しかありません。何かを追加する前に問うべきこと: 「聴衆が最大の要素だけを読んで一瞥するだけで、要点が伝わるか？」箇条書きを読まないと伝わらないなら、最大の要素が間違っています。
 
-### Grid, margins, negative space
+### グリッド、余白、ネガティブスペース
 
-Standard widescreen is **33.87 × 19.05cm**. Treat it as a 12-column grid internally:
+標準ワイドスクリーンは **33.87 × 19.05cm**。内部では 12 カラムグリッドとして扱ってください:
 
-- **Edge margin ≥ 1.27cm** (0.5") on all sides.
-- **Inter-block gap ≥ 0.76cm** (0.3") between cards / columns / rows — pick one value (0.76 or 1.27cm) and use it everywhere; mixed gaps look unfinished.
-- **≥ 20% negative space per slide.** Filling every pixel reads as amateur.
-- **Compose, don't web-center.** Whitespace is structural: a slide top-weighted with open space in the lower third is correct composition, not an empty defect. Intentional asymmetry (content left, breathing room right) reads more designed than centering everything — don't fill a gap just because it's there.
-- For card grids: `usable = 33.87 − 2·margin − (N−1)·gap`, then `col_width = usable / N`. Don't hand-pick x coordinates.
+- **端の余白 ≥ 1.27cm**（0.5"）を全辺に。
+- **ブロック間のギャップ ≥ 0.76cm**（0.3"）— カード / カラム / 行の間。値は 1 つ（0.76 または 1.27cm）に決めてどこでも使うこと — ギャップが混在すると未完成に見えます。
+- **スライドあたり ≥ 20% のネガティブスペース。** すべてのピクセルを埋めるのは素人っぽく見えます。
+- **構成せよ、Web センタリングするな。** 余白は構造の一部です — 下三分の一に開いたスペースを持つ上重心のスライドは、正しい構図であり空の欠陥ではありません。意図的な非対称（コンテンツを左、余白を右）はすべてを中央揃えするより意匠を凝らして見えます — スペースがあるからといって埋める必要はありません。
+- カードグリッドの場合: `usable = 33.87 − 2·margin − (N−1)·gap`、その上で `col_width = usable / N`。x 座標を手で選ばないこと。
 
-### Font pairings
+### フォントの組み合わせ
 
-Pair by document register, not by novelty. "Best For" is a prompt, not a decree; a pairing outside this table is fine if it fits — these 8 are seeds, not the set.
+文書のトーンに合わせて組み合わせてください。新奇さでは選ばないこと。「Best For」列はプロンプトであり指令ではありません — このテーブルの外の組み合わせでも合っていれば問題ありません。この 8 種は種であり、全集合ではありません。
 
 | Header | Body | Best For |
 |---|---|---|
-| Georgia | Calibri | Formal business, finance, executive reports |
-| Arial Black | Arial | Bold marketing, product launches |
-| Calibri | Calibri Light | Clean corporate, minimal design |
-| Cambria | Calibri | Traditional professional, legal, academic |
-| Trebuchet MS | Calibri | Friendly tech, startups, SaaS |
-| Impact | Arial | Bold headlines, event decks, keynotes |
-| Palatino | Garamond | Elegant editorial, luxury, nonprofit |
-| Consolas | Calibri | Developer tools, technical / engineering |
+| Georgia | Calibri | フォーマルなビジネス、金融、経営層向けレポート |
+| Arial Black | Arial | 大胆なマーケティング、製品ローンチ |
+| Calibri | Calibri Light | クリーンなコーポレート、ミニマルデザイン |
+| Cambria | Calibri | 伝統的なプロフェッショナル、法務、学術 |
+| Trebuchet MS | Calibri | フレンドリーなテック、スタートアップ、SaaS |
+| Impact | Arial | 大胆な見出し、イベントデック、基調講演 |
+| Palatino | Garamond | エレガントなエディトリアル、ラグジュアリー、非営利団体 |
+| Consolas | Calibri | 開発者ツール、技術/エンジニアリング |
 
-Set both fonts explicitly on every shape (`--prop font=Georgia` on titles, `--prop font=Calibri` on body), not via theme inheritance.
+両方のフォントを、テーマ継承ではなく、すべてのシェイプに明示的に設定してください（タイトルには `--prop font=Georgia`、本文には `--prop font=Calibri`）。
 
-### Color and contrast
+### 色とコントラスト
 
-The columns: **Primary** (dominant — 60–70% of weight, the color you see first), **Secondary** (supporting tone), **Accent** (sparing, one-hit emphasis), **Text** (body on light fills), **Muted** (captions / axis labels / footer).
+各列: **Primary**（支配色 — 重みの 60–70%、最初に目に入る色）、**Secondary**（補助トーン）、**Accent**（控えめに、一点強調用）、**Text**（明るい塗りの上の本文）、**Muted**（キャプション / 軸ラベル / フッター）。
 
-| Theme | Primary | Secondary | Accent | Text | Muted |
+| テーマ | Primary | Secondary | Accent | Text | Muted |
 |---|---|---|---|---|---|
 | Coral Energy | `F96167` | `F9E795` | `2F3C7E` | `333333` | `8B7E6A` |
 | Midnight Executive | `1E2761` | `CADCFC` | `FFFFFF` | `333333` | `8899BB` |
@@ -131,100 +131,100 @@ The columns: **Primary** (dominant — 60–70% of weight, the color you see fir
 | Sage Calm | `84B59F` | `69A297` | `50808E` | `2D3D35` | `7A9488` |
 | Cherry Bold | `990011` | `FCF6F5` | `2F3C7E` | `333333` | `8B6B6B` |
 
-Pick by topic, not by default — finance reads Midnight Executive, a product launch reads Coral Energy, safety / LOTO reads Cherry Bold. If the closest named theme is not quite right, blend (e.g. Forest primary + gold `D4A843` accent). Use **Text** on light fills, **Muted** for captions / axis / footer, `FFFFFF` or Secondary for body on dark fills.
+デフォルトではなくトピックに応じて選んでください — 金融には Midnight Executive、製品ローンチには Coral Energy、安全/LOTO には Cherry Bold が合います。最も近い名前付きテーマがぴったりでない場合はブレンドしてください（例: Forest の primary + ゴールド `D4A843` の accent）。明るい塗りには **Text**、キャプション/軸/フッターには **Muted**、暗い塗りの上の本文には `FFFFFF` または Secondary を使ってください。
 
-On dark backgrounds, text and chart series follow the Hard rules contrast floor above.
+暗い背景では、テキストとチャート系列は上記の Hard rules のコントラストの床に従ってください。
 
-### Chart-choice decision table
+### チャート選択の決定テーブル
 
-Wrong chart type kills the 3-second test:
+誤ったチャートタイプは 3 秒テストを台無しにします:
 
-| Data shape | Use | Avoid |
+| データの形状 | 使う | 避ける |
 |---|---|---|
-| Category comparison (A vs B vs C) | `column` (vertical) / `bar` (≥ 6 categories, horizontal) | pie (slices merge), line (no time axis) |
-| Time series, 1–3 series | `line` | area (occlusion), bar (implies discrete) |
-| Part-of-whole, 2–5 slices | `pie` / `doughnut` | pie with 8+ slices (unreadable) |
-| Correlation / distribution | `scatter` | line (implies ordering) |
-| Multiple categories × metrics, dense | stacked `column` or heatmap | one chart per metric — consolidate |
-| KPI snapshot (single big number) | **Large-text shape** (60–72pt + ≤ 5-word sublabel), NOT a chart | gauge chart, tiny bar |
+| カテゴリ比較（A vs B vs C） | `column`（縦） / `bar`（≥ 6 カテゴリ、横） | 円グラフ（スライスが混ざる）、折れ線（時間軸がない） |
+| 時系列、1–3 系列 | `line` | 面グラフ（オクルージョン）、棒グラフ（離散を暗示） |
+| 全体に対する部分、2–5 スライス | `pie` / `doughnut` | 8 スライス以上の円グラフ（読めない） |
+| 相関 / 分布 | `scatter` | 折れ線（順序を暗示） |
+| 複数カテゴリ × 指標、密 | 積み上げ `column` またはヒートマップ | 指標ごとに 1 チャート — 統合すべき |
+| KPI スナップショット（単一の大きな数字） | **大きなテキストシェイプ**（60–72pt + 5 単語以下のサブラベル）、チャートではない | ゲージチャート、小さな棒グラフ |
 
-Rule of thumb: if > 3 series and > 8 categories, split into two charts or switch to a table.
+経験則: 系列が 3 を超え、カテゴリが 8 を超える場合は、2 つのチャートに分割するか表に切り替えてください。
 
-### Animation
+### アニメーション
 
-Use as much or as little as the brand and content call for — a formal finance deck trends to near-zero, a product launch can be more expressive. Animation is a tool, not décor. Three floors keep it from hurting the deck (none caps how much you use):
+ブランドとコンテンツが求める分だけ使ってください — フォーマルな金融デックはほぼゼロに寄り、製品ローンチはより表現力豊かで構いません。アニメーションはツールであり装飾ではありません。それがデックを損なわないようにする 3 つの床があります（どれも使用量の上限を定めるものではありません）:
 
-- **Purposeful** — each one reveals or emphasizes (progressive bullet reveal, a build-up chart), never decorates. If it doesn't aid comprehension, cut it.
-- **Degrades gracefully** — pptx animation renders inconsistently across viewers (Keynote / Slides / web / mobile) and may not play at all, so every slide must read correctly as a *static* frame. Never hide essential content behind a reveal.
-- **Verify live** — animation is runtime-only; `view html` and screenshots can't see it, so confirm in a real presentation viewer before shipping.
+- **目的があること** — それぞれが明かすか強調する（段階的な箇条書きの表示、積み上がっていくチャート）ためのものであり、装飾のためではない。理解を助けないなら削ること。
+- **段階的に劣化すること** — pptx のアニメーションはビューア（Keynote / Slides / Web / モバイル）間でレンダリングが一貫せず、まったく再生されないこともあるため、すべてのスライドは*静止フレーム*としても正しく読めなければならない。必須のコンテンツを表示アニメーションの裏に隠さないこと。
+- **実機で検証すること** — アニメーションはランタイムのみの機能であり、`view html` やスクリーンショットでは見えないため、出荷前に実際のプレゼンテーションビューアで確認すること。
 
-Taste steer (not a ban): `fade` / `appear` / a single `zoom-entrance` with snappy durations (~hundreds of ms) fit most decks; `bounce` / `swivel` / `spin` / `fly-from-edge` / dense multi-object choreography usually read amateur — reach for them only when the brand is deliberately playful.
+好みの指針（禁止ではない）: `fade` / `appear` / 単発の `zoom-entrance`（キビキビした数百 ms のデュレーション）はほとんどのデックに合います。`bounce` / `swivel` / `spin` / `fly-from-edge` / 密な複数オブジェクトの振り付けは、たいてい素人っぽく見えます — ブランドが意図的にプレイフルな場合にのみ使ってください。
 
-### Layout patterns & data display
+### レイアウトパターンとデータ表示
 
-Vary layout across slides — repeating the same pattern makes every slide feel identical. These are common building blocks, not the full set — pick one per slide, or build a layout outside the table when the content calls for it:
+スライド間でレイアウトを変化させてください — 同じパターンの繰り返しはすべてのスライドを同じに感じさせます。以下はよくある構成要素であり全集合ではありません — スライドごとに 1 つ選ぶか、内容が求めるならテーブル外のレイアウトを組み立ててください:
 
-| Pattern | When to use | Key measurement |
+| パターン | 使う場面 | 主要な採寸 |
 |---|---|---|
-| **Two-column** (text left, visual right) | Concept + evidence; feature + screenshot | Each col ≈ 14-15cm; gap 1cm |
-| **Icon rows** (icon in filled circle + bold header + description) | Feature lists, benefits, team roles | Icon circle 1.5-2cm; 3-4 rows max |
-| **2×2 or 2×3 grid** (card tiles) | Quadrant analysis, SWOT, option comparison | Gap ≥ 0.76cm; consistent card height |
-| **Half-bleed image** (full left or right half, content overlay on other side) | Hero moments, case study openers | Image 16-17cm wide; content column ≥ 14cm |
-| **Large stat callout** (60-72pt number + ≤5-word sublabel below) | Single KPI, milestone, market size | Use shape, NOT a chart; sublabel 14-16pt muted |
+| **2 カラム**（左テキスト、右ビジュアル） | コンセプト + エビデンス；機能 + スクリーンショット | 各カラム ≈ 14–15cm；ギャップ 1cm |
+| **アイコン行**（塗りつぶし円のアイコン + 太字見出し + 説明） | 機能一覧、メリット、チームの役割 | アイコン円 1.5–2cm；行数は最大 3–4 |
+| **2×2 または 2×3 グリッド**（カードタイル） | 象限分析、SWOT、選択肢比較 | ギャップ ≥ 0.76cm；一貫したカード高さ |
+| **ハーフブリード画像**（左または右半分いっぱい、反対側にコンテンツをオーバーレイ） | ヒーロー的な瞬間、事例紹介の導入 | 画像幅 16–17cm；コンテンツカラム ≥ 14cm |
+| **大きな統計コールアウト**（60–72pt の数字 + 5 単語以下のサブラベル） | 単一の KPI、マイルストーン、市場規模 | シェイプを使う、チャートではない；サブラベルは 14–16pt ミュート色 |
 
-**Data display quick rules:**
-- Comparison columns (before/after, A vs B) beat a table for 2-3 options.
-- Timelines and process flows: numbered step shapes + connectors, not a bullet list.
+**データ表示のクイックルール:**
+- 比較カラム（前/後、A vs B）は、2–3 の選択肢であれば表より優れています。
+- タイムラインとプロセスフロー: 番号付きのステップシェイプ + コネクタを使い、箇条書きにはしないこと。
 
-### Image treatment (only when a slide uses a photo / screenshot / logo)
+### 画像の扱い（スライドが写真/スクリーンショット/ロゴを使う場合のみ）
 
-**Read the image first** (open the file) and choose treatment from what you see — don't place blind from a filename.
+**まず画像を読む**（ファイルを開く）— 見た内容から扱いを選んでください。ファイル名だけで盲目的に配置しないこと。
 
-- **Full-bleed photo** → size to COVER the region (crop edges), no border.
-- **Screenshot / diagram / logo** → size to FIT (never crop content). A transparent or fit image sits on a contrasting fill — drop a colored rectangle behind it, don't let it float on white.
-- **Text over a photo** → never raw on the image. Put it on a card, or lay a protection scrim between image and text (a dark rectangle at ~50–60% opacity, or a gradient fading from the text edge).
-- Never stretch (distort the aspect ratio); don't overlay text on a busy screenshot.
-- Prefer user-provided images / brand assets; no emoji or self-drawn art unless asked.
+- **フルブリード写真** → 領域を COVER するようにサイズ調整（端をクロップ）、ボーダーなし。
+- **スクリーンショット / 図 / ロゴ** → FIT するようにサイズ調整（コンテンツを絶対にクロップしないこと）。透過画像や FIT 画像はコントラストのある塗りの上に置く — 背後に色付きの矩形を敷き、白地の上に浮かせないこと。
+- **写真の上のテキスト** → 画像に直乗せしないこと。カードに乗せるか、画像とテキストの間に保護スクリム（不透明度 ~50–60% の暗い矩形、またはテキスト端からフェードするグラデーション）を挟むこと。
+- 決して引き伸ばさない（アスペクト比を歪めない）；ごちゃついたスクリーンショットにテキストをオーバーレイしないこと。
+- ユーザー提供の画像/ブランドアセットを優先し、指示がない限り絵文字や自作イラストは使わないこと。
 
-### Visual motif commitment
+### ビジュアルモチーフの一貫性
 
-Pick ONE distinctive element (rounded image frames, section numbers in filled circles, single-side border band, diagonal accent strips) and carry it to every slide — commit across the whole deck; styling one slide and leaving the rest plain reads as abandoned. A secondary motif is fine only if it doesn't compete with the primary. Declare it in your build plan first: `## Motif: numbered circles in brand color`.
+1 つの特徴的な要素（角丸の画像フレーム、塗りつぶし円の中のセクション番号、片側のボーダー帯、対角のアクセントストライプ）を選び、すべてのスライドに貫いてください — デック全体で一貫させること；1 枚だけスタイリングして残りを素のままにすると放棄されたように見えます。副次的なモチーフは、主モチーフと競合しない限り可。ビルドプランの中で最初に宣言してください: `## Motif: numbered circles in brand color`
 
-### Visual AI-tells to avoid
+### 避けるべきビジュアルの AI っぽさ
 
-- **No decorative underline under slide titles.** A stripe / rule below a heading is the single most common AI-slide tell — use whitespace or a background-color change instead.
-- **No rounded-corner card with a colored left-border accent stripe.** The other classic AI-slide tell — use a solid fill, a top accent band, or whitespace separation instead.
-- **No emoji as iconography** unless the brand uses them — use a shape or a real icon asset.
+- **スライドタイトルの下に装飾的なアンダーラインを引かないこと。** 見出しの下のストライプ/罫線は、AI 生成スライドの最も一般的な特徴です — 代わりに余白か背景色の変化を使ってください。
+- **角丸カードに色付きの左ボーダーアクセントストライプをつけないこと。** もう一つの典型的な AI スライドの特徴です — 代わりに単色塗り、トップのアクセントバンド、または余白による分離を使ってください。
+- **アイコンとして絵文字を使わないこと** — ブランドが使っている場合を除く。シェイプか本物のアイコンアセットを使ってください。
 
-Copy-level tells live in "Copy reads human".
+コピーレベルの特徴は「コピーは人間らしく」を参照。
 
-## Common Workflow
+## 一般的なワークフロー
 
-1. **Open/save lifecycle.** `officecli open <file>` at the start, `officecli save <file>` at the end to flush your edits to disk. `save` only writes — it leaves the resident warm for any follow-up edit; reach for `officecli close <file>` only when you want to release the resident immediately (a one-shot handoff). Both are always safe — they never error or lose work. Use `batch` for repetitive shape grids. **Flush only at the non-officecli boundary:** officecli's own reads always see your edits; run `save`/`close` only before a non-officecli program reads the file (python-pptx, PowerPoint, a renderer, delivery).
-2. **Orient.** New deck: `officecli create "$FILE"`. Existing: `officecli view "$FILE" outline` first. Never edit blind.
-3. **Title sequence first (plan, don't build yet).** Before creating any slide or shape, write out the full ordered list of slide titles. If someone reading ONLY the titles can't follow the argument, fix the arc now — cheaper in a list than after 14 slides. Pick ONE title grammar — all topic noun-phrases or all action statements, never a mix — and hold it throughout (see "Copy reads human").
-4. **Build in display order.** Add slides in audience-view order: cover → agenda → section-1 divider → section-1 content → section-2 divider → … → closing. `--index` on slide add works, but linear append keeps the build script readable and avoids index-arithmetic bugs. **Before final delivery, confirm slide count + narrative arc match your build plan.** Gate 3's order-sanity check catches cases where the cover ends up as slide 11 of 14 instead of slide 1.
-5. **Incremental per slide.** Create slide + background, then title, then supporting shapes / charts / connectors. Always `layout=blank` for custom designs. After each structural op, `get /slide[N] --depth 1` to confirm shape IDs.
-6. **Format to spec.** Per the Requirements table; formatting is deliverable, not polish.
-7. **Save + verify.** `officecli save` flushes the file to disk (or `officecli close` to flush and also end the session). Always open in the target presentation viewer before shipping — chart colors, animations, fonts, and zoom are runtime features `view html` can't render. Full verification in QA below.
-8. **QA — assume there are problems.** Fix-and-verify until a cycle finds zero new issues.
+1. **開く/保存のライフサイクル。** 最初に `officecli open <file>`、最後に `officecli save <file>` で編集をディスクにフラッシュしてください。`save` は書き込むだけで、後続の編集のためにレジデントをウォームに保ちます。`officecli close <file>` に手を伸ばすのは、レジデントを即座に解放したい場合（ワンショットのハンドオフ）のみにしてください。両方とも常に安全です — エラーになったり作業が失われたりすることはありません。繰り返しのシェイプグリッドには `batch` を使ってください。**非 officecli の境界でのみフラッシュしてください:** officecli 自身の読み取りは常にあなたの編集を反映します；`save`/`close` は、非 officecli プログラム（python-pptx、PowerPoint、レンダラー、納品）がファイルを読む前にのみ実行してください。
+2. **方向づけ。** 新規デック: `officecli create "$FILE"`。既存デック: まず `officecli view "$FILE" outline`。盲目的に編集しないこと。
+3. **タイトルシーケンスを先に（計画するだけで、まだ構築しない）。** スライドやシェイプを作る前に、順序付けられたスライドタイトルの全リストを書き出してください。タイトルだけを読んだ人が議論の流れを追えないなら、今のうちに直してください — 14 枚組み上げた後より、リストの段階で直す方が安上がりです。1 つのタイトル文法を選び（すべて名詞句か、すべて行動文か、混在させないこと）、通して維持してください（「コピーは人間らしく」参照）。
+4. **表示順に構築。** 聴衆視点の順序でスライドを追加してください: カバー → アジェンダ → セクション 1 の区切り → セクション 1 のコンテンツ → セクション 2 の区切り → … → クロージング。スライド追加時の `--index` も機能しますが、線形の追加の方がビルドスクリプトを読みやすく保ち、インデックス演算のバグを避けられます。**最終納品前に、スライド数 + 物語の流れがビルドプランと一致することを確認してください。** Gate 3 の順序サニティチェックは、カバーが 14 枚中 1 枚目のはずが 11 枚目になっているようなケースを捕捉します。
+5. **スライドごとにインクリメンタルに。** スライド + 背景を作成し、次にタイトル、次に補助シェイプ / チャート / コネクタ。カスタムデザインには常に `layout=blank`。構造的な操作の後は毎回 `get /slide[N] --depth 1` でシェイプ ID を確認してください。
+6. **仕様どおりにフォーマット。** Requirements テーブルに従うこと；フォーマットは磨き上げではなく納品物です。
+7. **保存 + 検証。** `officecli save` がファイルをディスクにフラッシュします（または `officecli close` でフラッシュしつつセッションも終了）。出荷前には必ず対象のプレゼンテーションビューアで開いて確認してください — チャートの色、アニメーション、フォント、ズームはランタイム機能であり `view html` ではレンダリングできません。完全な検証は下記の QA を参照。
+8. **QA — 問題があると仮定する。** 1 サイクルで新規の問題がゼロになるまで、修正と検証を繰り返してください。
 
-## Quick Start
+## クイックスタート
 
-Minimal viable deck: cover + one content slide + notes. `$FILE` stands in for your filename.
+最小限の実用的なデック: カバー + コンテンツスライド 1 枚 + ノート。`$FILE` はあなたのファイル名の代わりです。
 
 ```bash
 FILE="deck.pptx"
 officecli create "$FILE"
 officecli open "$FILE"
 
-# Cover — dark fill, centered title
+# カバー — 暗い塗り、中央揃えのタイトル
 officecli add "$FILE" / --type slide --prop layout=blank --prop background=1E2761
 officecli add "$FILE" /slide[1] --type shape --prop text="FY26 Strategic Review" \
   --prop x=2cm --prop y=7cm --prop width=29.87cm --prop height=3cm \
   --prop font=Georgia --prop size=44 --prop bold=true --prop color=FFFFFF --prop align=center
 
-# Content — white fill, title + body + notes
+# コンテンツ — 白い塗り、タイトル + 本文 + ノート
 officecli add "$FILE" / --type slide --prop layout=blank --prop background=FFFFFF
 officecli add "$FILE" /slide[2] --type shape --prop text="Revenue grew 18% YoY" \
   --prop x=1.5cm --prop y=1.2cm --prop width=30cm --prop height=2cm \
@@ -238,66 +238,66 @@ officecli save "$FILE"
 officecli validate "$FILE"
 ```
 
-Shape of every build: open → slide+background → title → body → notes → save → validate.
+すべてのビルドの型: open → スライド+背景 → タイトル → 本文 → ノート → save → validate。
 
-## Reading & Analysis
+## 読み取りと分析
 
-Start wide, then narrow. `outline` first, `view text` / `get` / `query` once you know where to look.
+広く始めて、絞り込んでいく。まず `outline`、どこを見るべきか分かってから `view text` / `get` / `query`。
 
 ```bash
-officecli view "$FILE" outline          # slide count + titles
-officecli view "$FILE" annotated        # complete per-slide breakdown with fonts, sizes, tables, charts
-officecli view "$FILE" text --start 1 --end 5   # text dump (includes table cell text)
-officecli view "$FILE" issues           # empty slides, overflow hints
-officecli view "$FILE" stats            # counts + totals (incl. pictures missing alt)
+officecli view "$FILE" outline          # スライド数 + タイトル
+officecli view "$FILE" annotated        # フォント、サイズ、表、チャートを含む完全なスライド別内訳
+officecli view "$FILE" text --start 1 --end 5   # テキストダンプ（表セルのテキストも含む）
+officecli view "$FILE" issues           # 空のスライド、オーバーフローのヒント
+officecli view "$FILE" stats            # カウント + 合計（alt 未設定の画像を含む）
 ```
 
-**Inspect one element.** XPath-style paths, 1-based. ALWAYS quote. Prefer `@name=` / `@id=` selectors over positional `[N]` (stable across reorderings). `[last()]` works. Add `--json` for machine output.
+**単一要素の確認。** XPath 風のパス、1-based。常にクォートすること。位置指定の `[N]` より `@name=` / `@id=` セレクタを優先してください（並べ替えに対して安定します）。`[last()]` も使えます。機械可読な出力には `--json` を追加してください。
 
 ```bash
-officecli get "$FILE" "/slide[1]" --depth 1              # shape list with IDs and names
+officecli get "$FILE" "/slide[1]" --depth 1              # ID と名前を含むシェイプ一覧
 officecli get "$FILE" "/slide[1]/shape[@name=Title]"
-officecli get "$FILE" "/slide[1]/table[1]" --depth 3     # table rows / cells
+officecli get "$FILE" "/slide[1]/table[1]" --depth 3     # 表の行 / セル
 ```
 
-**Query across the deck.** CSS-like selectors; operators `=`, `!=`, `~=`, `>=`, `<=`, `[attr]`, `:contains()`, `:no-alt`. `help pptx query` lists queryable element types.
+**デック全体を横断してクエリ。** CSS ライクなセレクタ；演算子は `=`、`!=`、`~=`、`>=`、`<=`、`[attr]`、`:contains()`、`:no-alt`。`help pptx query` にクエリ可能な要素タイプの一覧があります。
 
 ```bash
 officecli query "$FILE" 'shape:contains("Revenue")'
-officecli query "$FILE" 'picture:no-alt'                 # accessibility gap
-officecli query "$FILE" 'shape[fill=1E2761]'             # color match
-officecli query "$FILE" 'shape[width>=10cm]'             # numeric
+officecli query "$FILE" 'picture:no-alt'                 # アクセシビリティのギャップ
+officecli query "$FILE" 'shape[fill=1E2761]'             # 色のマッチ
+officecli query "$FILE" 'shape[width>=10cm]'             # 数値
 ```
 
-**`query --json` output schema.** Results wrap in `.data.results[]` — `jq -r '.data.results[0].format.id'`, NOT `.[0].id`. Shape name is `.name`; fill is `.format.fill`; textColor is `.format.textColor`.
+**`query --json` の出力スキーマ。** 結果は `.data.results[]` にラップされます — `jq -r '.data.results[0].format.id'` であり `.[0].id` ではありません。シェイプ名は `.name`；塗りは `.format.fill`；テキストカラーは `.format.textColor`。
 
-**Visual preview (LEAD).**
+**ビジュアルプレビュー（推奨）。**
 
 ```bash
-officecli view "$FILE" html                # prints an HTML preview path; Read it for per-slide visual audit (best structural ground truth)
-officecli view "$FILE" svg --start 3 --end 3   # single slide SVG (charts + gradients do NOT render in SVG)
+officecli view "$FILE" html                # HTML プレビューのパスを表示；スライド単位のビジュアル監査には Read で読み込むこと（最良の構造的な正解データ）
+officecli view "$FILE" svg --start 3 --end 3   # 単一スライドの SVG（チャートとグラデーションは SVG ではレンダリングされない）
 ```
 
-**Reading the output — an expected non-defect:**
-- **`layout=blank` has no title placeholder.** Titles are plain `shape` elements, so `view outline` reporting `(untitled)` is **expected**, not a defect. Use `layout=title` + `placeholder[title]` only when screen-reader outline compatibility matters.
+**出力の読み方 — これは想定内であり欠陥ではない:**
+- **`layout=blank` にはタイトルプレースホルダーがありません。** タイトルは単なる `shape` 要素なので、`view outline` が `(untitled)` と報告するのは**想定どおり**であり欠陥ではありません。スクリーンリーダーのアウトライン互換性が問題になる場合のみ `layout=title` + `placeholder[title]` を使ってください。
 
-## Creating & Editing
+## 作成と編集
 
-Verbs: `add` / `set` / `remove` / `move` / `swap` / `batch` / `raw-set`. Ninety percent of a deck is slides, shapes, text, a few charts, pictures, connectors.
+動詞: `add` / `set` / `remove` / `move` / `swap` / `batch` / `raw-set`。デックの 9 割はスライド、シェイプ、テキスト、少数のチャート、画像、コネクタで構成されます。
 
-### Slides and backgrounds
+### スライドと背景
 
-A slide is `/slide[N]`. Always pass `layout=blank` for custom designs. Background: solid, gradient, or image.
+スライドは `/slide[N]`。カスタムデザインには常に `layout=blank` を渡してください。背景: 単色、グラデーション、または画像。
 
 ```bash
-officecli add "$FILE" / --type slide --prop layout=blank --prop background=1E2761                 # solid
-officecli add "$FILE" / --type slide --prop layout=blank --prop "background=1E2761-CADCFC-180"   # gradient (start-end-angle)
-officecli add "$FILE" / --type slide --prop layout=blank --prop background=image:/path/to/hero.jpg  # image background (LEAD)
+officecli add "$FILE" / --type slide --prop layout=blank --prop background=1E2761                 # 単色
+officecli add "$FILE" / --type slide --prop layout=blank --prop "background=1E2761-CADCFC-180"   # グラデーション（開始色-終了色-角度）
+officecli add "$FILE" / --type slide --prop layout=blank --prop background=image:/path/to/hero.jpg  # 画像背景（推奨）
 ```
 
-### Shapes
+### シェイプ
 
-A `shape` holds text, fill, border, position, and optional animation / link.
+`shape` はテキスト、塗り、枠線、位置、任意のアニメーション/リンクを保持します。
 
 ```bash
 officecli add "$FILE" /slide[2] --type shape --prop name=Title --prop text="Key Insight" \
@@ -305,20 +305,20 @@ officecli add "$FILE" /slide[2] --type shape --prop name=Title --prop text="Key 
   --prop font=Georgia --prop size=36 --prop bold=true --prop color=1E2761 --prop fill=none
 ```
 
-Positioning is explicit — no layout engine, you own the grid math. `--prop preset=` picks geometry (`rect`, `roundRect`, `ellipse`, `triangle`, `arrow`, `star5`, ...); custom `M...Z` paths are not supported — pick a preset. **Name shapes at creation** (`--prop name=HeroTitle`) and address later with `"/slide[N]/shape[@name=HeroTitle]"` — names survive z-order / remove-then-add, whereas positional `/shape[3]` (and even `@id=`) shift. Re-`get --depth 1` after any structural change before using positional indexes.
+配置は明示的です — レイアウトエンジンはなく、グリッドの計算はあなた自身が持ちます。`--prop preset=` でジオメトリを選びます（`rect`、`roundRect`、`ellipse`、`triangle`、`arrow`、`star5` など）；カスタムの `M...Z` パスはサポートされないため、プリセットから選んでください。**作成時にシェイプに名前を付け**（`--prop name=HeroTitle`）、後から `"/slide[N]/shape[@name=HeroTitle]"` でアドレスしてください — 名前は z 順序の変更や削除→追加を跨いで生き残りますが、位置指定の `/shape[3]`（さらには `@id=` も）はずれます。構造的な変更の後、位置指定インデックスを使う前に必ず `get --depth 1` し直してください。
 
-### Text inside shapes (paragraphs, runs, styling)
+### シェイプ内のテキスト（段落、ラン、スタイリング）
 
-A shape has paragraphs (`paragraph[K]`) and runs (`run[K]`). For one-line text, `--prop text=` on the shape is enough; a `\n` in the text makes a paragraph break, `\t` a tab (see Shell & Execution Discipline; double `\\n` for a literal). `add --type paragraph` takes the same style props as a shape (text, align, bold, italic, size, color, font). For mixed styling *within* a line, append a styled run:
+シェイプは段落（`paragraph[K]`）とラン（`run[K]`）を持ちます。1 行のテキストならシェイプの `--prop text=` で十分です；テキスト中の `\n` は段落区切りに、`\t` はタブになります（詳細は「シェルと実行の規律」参照；リテラルには `\\n` を二重にしてください）。`add --type paragraph` はシェイプと同じスタイルプロパティ（text、align、bold、italic、size、color、font）を取ります。1 行*内*で混在したスタイリングをするには、スタイル付きのランを追加してください:
 
 ```bash
 officecli add "$FILE" "/slide[2]/shape[@name=Card1]/paragraph[1]" --type run \
   --prop text=" (inline detail)" --prop size=14 --prop italic=true --prop color=8899BB
 ```
 
-### Charts
+### チャート
 
-Pick chart type per the Design Principles chart-choice table. Full prop list (chartType enum, `seriesN.*`, `data=`/`categories=`, axis options): `help pptx add chart`. Typical multi-series with brand colors:
+Design Principles のチャート選択テーブルに従ってチャートタイプを選んでください。完全なプロパティ一覧（chartType 列挙、`seriesN.*`、`data=`/`categories=`、軸オプション）: `help pptx add chart`。ブランドカラーを使った典型的なマルチ系列:
 
 ```bash
 officecli add "$FILE" /slide[3] --type chart --prop chartType=column \
@@ -328,9 +328,9 @@ officecli add "$FILE" /slide[3] --type chart --prop chartType=column \
   --prop x=2cm --prop y=4cm --prop width=20cm --prop height=10cm
 ```
 
-Gotchas: (1) chart titles with `()`, `[]`, `TBD` ship as literal text. (2) some viewers normalize chart colors to theme defaults — verify in the target viewer. Series can be added after creation (`add --type series`).
+注意点: (1) `()`、`[]`、`TBD` を含むチャートタイトルはリテラルなテキストとして出荷されます。(2) 一部のビューアはチャートの色をテーマのデフォルトに正規化します — 対象のビューアで確認してください。系列は作成後にも追加できます（`add --type series`）。
 
-### Pictures
+### 画像
 
 ```bash
 officecli add "$FILE" /slide[4] --type picture --prop src=hero.jpg \
@@ -338,11 +338,11 @@ officecli add "$FILE" /slide[4] --type picture --prop src=hero.jpg \
   --prop alt="Product hero, gradient lit from right"
 ```
 
-Confirm with `officecli query "$FILE" 'picture:no-alt'` — must be empty before delivery.
+`officecli query "$FILE" 'picture:no-alt'` で確認してください — 納品前には空である必要があります。
 
-### Connectors (LEAD — flowcharts / decision trees first-class)
+### コネクタ（推奨 — フローチャート/意思決定ツリーが第一級サポート）
 
-Draws a line between two shapes or free coordinates. Full prop / enum reference (`shape`, `headEnd`/`tailEnd` values, `from`/`to` ref forms): `help pptx add connector`.
+2 つのシェイプまたは自由座標の間に線を描きます。完全なプロパティ/列挙リファレンス（`shape`、`headEnd`/`tailEnd` の値、`from`/`to` の参照形式）: `help pptx add connector`。
 
 ```bash
 officecli add "$FILE" /slide[5] --type connector \
@@ -350,43 +350,43 @@ officecli add "$FILE" /slide[5] --type connector \
   --prop shape=elbow --prop color=333333 --prop tailEnd=triangle
 ```
 
-**Every flow connector needs an arrowhead.** Without one, `bentConnector3` renders as a directionless line. `preset=rightArrow` overlay only works for horizontal flows; diamonds / decision trees with diverging edges need `tailEnd=`.
+**すべてのフローコネクタに矢印が必要です。** ないと `bentConnector3` は方向のない線としてレンダリングされます。`preset=rightArrow` のオーバーレイは水平フローにのみ有効です；分岐するエッジを持つ菱形/意思決定ツリーには `tailEnd=` が必要です。
 
-### Animations (LEAD)
+### アニメーション（推奨）
 
-Use per the Animation floors above (purposeful, degrades gracefully, verify live). Preset names + duration syntax: `help pptx animation`.
+上記のアニメーションの床（目的があること、段階的に劣化すること、実機で検証すること）に従って使ってください。プリセット名 + デュレーション構文: `help pptx animation`。
 
 ```bash
 officecli set "$FILE" "/slide[2]/shape[@name=HeroCard]" --prop animation=fade-entrance-400
-officecli set "$FILE" "/slide[2]/shape[@name=HeroCard]" --prop animation=none    # clear all
+officecli set "$FILE" "/slide[2]/shape[@name=HeroCard]" --prop animation=none    # すべてクリア
 ```
 
-### Hyperlinks, tooltips, slide-jump
+### ハイパーリンク、ツールチップ、スライドジャンプ
 
-`--prop link=slide[N]` for an in-deck jump (1-based; target slide must exist), `link=nextslide` / `firstslide` / `lastslide` / `previousslide` / `endshow` for named navigation, `link=https://...` for a URL, `--prop tooltip="..."` for hover text.
+デック内ジャンプには `--prop link=slide[N]`（1-based；対象スライドが存在すること）、名前付きナビゲーションには `link=nextslide` / `firstslide` / `lastslide` / `previousslide` / `endshow`、URL には `link=https://...`、ホバーテキストには `--prop tooltip="..."`。
 
-### Tables, placeholders, groups, zoom — one-liners
+### 表、プレースホルダー、グループ、ズーム — ワンライナー集
 
-- **Tables** — `--type table --prop rows=N --prop cols=M`. Row-level `set` supports `height` and `c1/c2/c3` (seed cell text). Header-row styling is table-level (`firstRow=true` / `headerFill=`), not a row prop. Cell formatting lives on the cell paragraph / run. Populate rows BEFORE setting table-level font (font cascade gets reset by row ops).
-- **Placeholders** — `"/slide[N]/placeholder[title]"` / `placeholder[body]`. Available only when the slide uses a layout with placeholders (not `layout=blank`).
-- **Groups** (LEAD) — address children via `"/slide[N]/group[@name=G]/shape[1]"`. Survives reordering better than positional indexes.
-- **Zoom slide** (LEAD) — `--type zoom --prop target=N` (one link per target; alias `slide`). Emit N separate zoom shapes for a multi-target nav hub. Zoom is a runtime feature — `view html` shows the static geometry; the zoom interaction runs only in a live presentation viewer.
-- **Slide comments** — reviewer annotations anchored at `/slide[N]/comment[M]`. Full lifecycle (`add / set / get / query / remove`). Props: `text`, `author`, `initials` (auto-derived), `date` (ISO 8601, defaults to UtcNow), `x` / `y` (length anchor).
+- **表** — `--type table --prop rows=N --prop cols=M`。行レベルの `set` は `height` と `c1/c2/c3`（セルテキストの初期値）をサポートします。ヘッダー行のスタイリングは表レベル（`firstRow=true` / `headerFill=`）であり、行のプロパティではありません。セルのフォーマットはセルの段落/ランに属します。表レベルのフォントを設定する前に行を投入してください（行操作でフォントのカスケードがリセットされます）。
+- **プレースホルダー** — `"/slide[N]/placeholder[title]"` / `placeholder[body]`。プレースホルダーを持つレイアウトを使うスライドでのみ利用可能（`layout=blank` では不可）。
+- **グループ**（推奨） — 子要素には `"/slide[N]/group[@name=G]/shape[1]"` でアドレスしてください。位置指定インデックスより並べ替えに対して安定します。
+- **ズームスライド**（推奨） — `--type zoom --prop target=N`（対象ごとに 1 リンク；エイリアス `slide`）。複数対象のナビゲーションハブには N 個の別々のズームシェイプを発行してください。ズームはランタイム機能です — `view html` は静的なジオメトリを表示しますが、ズームのインタラクション自体はライブのプレゼンテーションビューアでのみ動作します。
+- **スライドコメント** — `/slide[N]/comment[M]` に紐づくレビュー者の注釈。フルライフサイクル（`add / set / get / query / remove`）。プロパティ: `text`、`author`、`initials`（自動導出）、`date`（ISO 8601、デフォルトは UtcNow）、`x` / `y`（長さのアンカー）。
   ```bash
   officecli add "$FILE" "/slide[2]" --type comment --prop author="Alice" --prop text="Tighten this bullet" --prop x=20cm --prop y=3cm
-  officecli query "$FILE" 'comment' --json | jq '.data.results | length'   # count all review comments
-  officecli remove "$FILE" "/slide[2]/comment[1]"                           # resolve after addressing
+  officecli query "$FILE" 'comment' --json | jq '.data.results | length'   # すべてのレビューコメントを数える
+  officecli remove "$FILE" "/slide[2]/comment[1]"                           # 対応後にクローズ
   ```
 
-### Deck-level recipes
+### デックレベルのレシピ
 
-Patterns not obvious from the primitives. Each gives the **visual outcome** first, then a runnable block. `$FILE` = your filename. Use `/slide[last()]` to address the slide you just added. The recipes demonstrate **structure and coordinate math** — swap in the palette / fonts you chose for this topic; the navy `1E2761` + Georgia is just the example's theme, not a house style to copy verbatim.
+プリミティブからは自明ではないパターン。それぞれ**ビジュアルな結果**を先に示し、次に実行可能なブロックを示します。`$FILE` = あなたのファイル名。直前に追加したスライドをアドレスするには `/slide[last()]` を使ってください。以下のレシピは**構造と座標計算**を示すものです — このトピック向けに選んだパレット/フォントに差し替えてください；紺色 `1E2761` + Georgia は例として使ったテーマにすぎず、必ず真似るべきハウススタイルではありません。
 
-**Z-order.** Later-added shapes are on top. Add background decoration FIRST, titles LAST. To fix after the fact: `--prop zorder=back/front` (renumbers siblings — re-`get --depth 1` before stacking more).
+**Z 順序。** 後から追加されたシェイプが上に来ます。背景装飾を先に、タイトルを最後に追加してください。後から直す場合: `--prop zorder=back/front`（兄弟要素を再採番するので、さらに積み上げる前に `get --depth 1` し直してください）。
 
-#### (a) Cover (and section divider)
+#### (a) カバー（およびセクション区切り）
 
-**Visual outcome.** Dark navy fill, centered 44pt title, 18pt ice-blue meta line.
+**ビジュアルな結果。** 濃紺の塗り、中央揃えの 44pt タイトル、18pt のアイスブルーのメタ行。
 
 ```bash
 officecli add "$FILE" / --type slide --prop layout=blank --prop background=1E2761
@@ -398,11 +398,11 @@ officecli add "$FILE" "/slide[last()]" --type shape --prop text="Prepared for Ac
   --prop font=Calibri --prop size=18 --prop color=CADCFC --prop align=center
 ```
 
-**Section divider** = same cover, plus a giant translucent number (`size=120`, `opacity=0.15`) added FIRST so it sits behind the section title.
+**セクション区切り** = カバーと同じ構成に加え、セクションタイトルの背後に来るよう最初に追加された巨大な半透明の番号（`size=120`、`opacity=0.15`）。
 
-#### (b) Data slide (chart + commentary block)
+#### (b) データスライド（チャート + コメンタリーブロック）
 
-**Visual outcome.** Left two-thirds: column chart with brand series colors. Right one-third: "Key Insight" card with 20pt heading + 18pt body — audience reads the takeaway before parsing the bars.
+**ビジュアルな結果。** 左三分の二: ブランド系列色の縦棒グラフ。右三分の一: 20pt 見出し + 18pt 本文の「Key Insight」カード — 聴衆は棒を読み解く前に要点を読みます。
 
 ```bash
 officecli add "$FILE" / --type slide --prop layout=blank --prop background=FFFFFF
@@ -410,13 +410,13 @@ officecli add "$FILE" "/slide[last()]" --type shape --prop text="FY26 Revenue Be
   --prop x=1.5cm --prop y=1cm --prop width=30cm --prop height=1.8cm \
   --prop font=Georgia --prop size=36 --prop bold=true --prop color=1E2761
 
-# Chart — left 2/3 (single-quote the title because of `$`)
+# チャート — 左 2/3（`$` があるためタイトルはシングルクォート）
 officecli add "$FILE" "/slide[last()]" --type chart --prop chartType=column \
   --prop series1.name=Actual --prop series1.values="42,45,48,55" --prop series1.color=1E2761 \
   --prop series2.name=Plan --prop series2.values="40,42,45,48" --prop series2.color=CADCFC \
   --prop categories="Q1,Q2,Q3,Q4" --prop x=1.5cm --prop y=3.5cm --prop width=20cm --prop height=14cm --prop title='FY26 Revenue ($M)'
 
-# Commentary card — right 1/3: background + heading + body
+# コメンタリーカード — 右 1/3: 背景 + 見出し + 本文
 officecli add "$FILE" "/slide[last()]" --type shape --prop preset=roundRect --prop fill=F5F7FA --prop line=none \
   --prop x=22.5cm --prop y=3.5cm --prop width=9.8cm --prop height=14cm
 officecli add "$FILE" "/slide[last()]" --type shape --prop text="Key Insight" \
@@ -427,13 +427,13 @@ officecli add "$FILE" "/slide[last()]" --type shape --prop text="EMEA launch + N
   --prop font=Calibri --prop size=18 --prop color=333333
 ```
 
-#### (c) Flowchart / process diagram (boxes + connectors)
+#### (c) フローチャート / プロセス図（ボックス + コネクタ）
 
-**Visual outcome.** Four rounded boxes across at y=8cm, each 6×3cm, alternating navy/iceblue, joined by elbow connectors with triangle arrowheads.
+**ビジュアルな結果。** y=8cm に横並びの角丸ボックス 4 つ、それぞれ 6×3cm、紺/アイスブルー交互、肘型コネクタと三角矢印で接続。
 
-Grid math (4 boxes, 33.87cm slide, 1.5cm margins): `gap = (33.87 − 3 − 24) / 3 = 2.29cm`. x-positions: `1.5, 9.79, 18.08, 26.37`.
+グリッド計算（4 ボックス、33.87cm スライド、余白 1.5cm）: `gap = (33.87 − 3 − 24) / 3 = 2.29cm`。x 座標: `1.5, 9.79, 18.08, 26.37`。
 
-Each box carries its own label via `valign=middle` (no separate overlay shape needed). Use `batch` heredoc for portable coordinate arithmetic — no `bc`, no bash arrays.
+各ボックスは `valign=middle` により自身でラベルを持ちます（別のオーバーレイシェイプは不要）。座標計算をポータブルにするため `batch` heredoc を使ってください — `bc` も bash 配列も不要です。
 
 ```bash
 cat <<EOF | officecli batch "$FILE"
@@ -445,7 +445,7 @@ cat <<EOF | officecli batch "$FILE"
 ]
 EOF
 
-# Connector pattern — reuse for any box-to-box graph.
+# コネクタパターン — ボックス間の任意のグラフに再利用可能
 for pair in "Step1 Step2" "Step2 Step3" "Step3 Step4"; do
   A=${pair% *}; B=${pair#* }
   officecli add "$FILE" "/slide[$SLIDE]" --type connector \
@@ -455,27 +455,27 @@ for pair in "Step1 Step2" "Step2 Step3" "Step3 Step4"; do
 done
 ```
 
-`shape=elbow` is canonical (`bentConnector2` / `bentConnector3` also accepted).
+`shape=elbow` が正式です（`bentConnector2` / `bentConnector3` も受け付けられます）。
 
-#### (d) Multi-slide deck skeletons
+#### (d) 複数スライドのデックの骨格
 
-No code block — it's a rhythm. The sequences below are **illustrations of one working cadence (alternating dark dividers with white content), not required running orders** — derive your actual arc from the content first (see "Title sequence first"), then borrow whatever divider/content rhythm fits:
+コードブロックはありません — これはリズムの問題です。以下の並びは**動作するカデンスの一例（濃色の区切りと白いコンテンツの交互）を示すものであり、必須の順序ではありません** — まずコンテンツから実際のアーク（流れ）を導き（「タイトルシーケンスを先に」参照）、その上で合う区切り/コンテンツのリズムを借用してください:
 
-- **10-slide review:** Cover · Agenda · 3 KPI · Div01 · Chart · Chart · Div02 · Flow · Timeline · Close
-- **20-slide pitch:** same rhythm × 2, sectioned Problem · Solution · Market · Product · Traction · Model · Team · Financials · Ask
-- Every divider must appear **before** its section content (Gate 3 order sanity)
-- Cover/divider = (a); chart pages = (b); process pages = (c); KPI pages = (e); decision pages = (f)
+- **10 枚のレビュー:** カバー・アジェンダ・KPI×3・区切り01・チャート・チャート・区切り02・フロー・タイムライン・クロージング
+- **20 枚のピッチ:** 同じリズムを×2、Problem・Solution・Market・Product・Traction・Model・Team・Financials・Ask のセクションに分割
+- すべての区切りは、そのセクションのコンテンツより**前に**現れなければなりません（Gate 3 の順序サニティ）
+- カバー/区切り = (a)；チャートページ = (b)；プロセスページ = (c)；KPI ページ = (e)；意思決定ページ = (f)
 
-#### (e) KPI callouts — giant-number card grid
+#### (e) KPI コールアウト — 巨大数字のカードグリッド
 
-**Visual outcome.** Three or four giant numbers across a row; each card = unit sublabel + small percent-change chip + one-line takeaway. The single most common exec-deck element.
+**ビジュアルな結果。** 1 行に 3〜4 つの巨大な数字；各カードは単位のサブラベル + 小さなパーセント変化のチップ + 1 行のテイクアウェイで構成。経営層向けデックで最も一般的な要素。
 
-**Sizing rule.** 60pt Georgia bold fits ~5 chars in a 9.78cm card (`$84.2`, `118%`, `24.5`). For longer values (`$84.2M`), split: `$84.2` as the big number, `USD millions` as the sublabel — never shrink the font to chase a unit suffix, it just wraps.
+**サイズのルール。** 60pt Georgia 太字は 9.78cm のカードにおおよそ 5 文字収まります（`$84.2`、`118%`、`24.5`）。より長い値（`$84.2M`）は分割してください: 大きな数字として `$84.2`、サブラベルとして `USD millions` — 単位のサフィックスを追うためにフォントを縮めないこと、単に折り返されるだけです。
 
-Grid math (3 cards, 1.5cm margins, 0.76cm gap): `col_width = (33.87 − 3 − 1.52) / 3 = 9.78cm`. x-positions: `1.5, 12.04, 22.58`. Use accent color on a single "watch" card so risk reads in one second.
+グリッド計算（3 カード、余白 1.5cm、ギャップ 0.76cm）: `col_width = (33.87 − 3 − 1.52) / 3 = 9.78cm`。x 座標: `1.5, 12.04, 22.58`。リスクが 1 秒で読み取れるよう、単一の「要注意」カードにアクセントカラーを使ってください。
 
 ```bash
-# Two cards: navy standard + terracotta watch. Each = bg + big number + sublabel + chip.
+# 2 枚のカード: 紺色の標準カード + テラコッタ色の要注意カード。それぞれ = 背景 + 大きな数字 + サブラベル + チップ
 cat <<EOF | officecli batch "$FILE"
 [
   {"command":"add","parent":"/slide[$SLIDE]","type":"shape","props":{"preset":"roundRect","fill":"1E2761","line":"none","x":"1.5cm","y":"4cm","width":"9.78cm","height":"7cm"}},
@@ -490,9 +490,9 @@ cat <<EOF | officecli batch "$FILE"
 EOF
 ```
 
-#### (f) Decision tree — YES/NO branching
+#### (f) 意思決定ツリー — YES/NO の分岐
 
-**Visual outcome.** Diamond at top-center; YES/NO child boxes diverging left-right; both converge into a shared terminal box. Layout: diamond at `x=13.94, y=2cm, 6×3cm`; YES at `3cm, 7.5cm`; NO at `22.87cm, 7.5cm`; terminal at `13.94cm, 13cm`. Convention: red = stop/escalate, blue = standard, green = safe terminal. **Every connector needs an arrowhead** — readers misparse direction otherwise.
+**ビジュアルな結果。** 上部中央に菱形；YES/NO の子ボックスが左右に分岐；両方が共通の終端ボックスに合流。レイアウト: 菱形は `x=13.94, y=2cm, 6×3cm`；YES は `3cm, 7.5cm`；NO は `22.87cm, 7.5cm`；終端は `13.94cm, 13cm`。慣習: 赤 = 停止/エスカレーション、青 = 標準、緑 = 安全な終端。**すべてのコネクタに矢印が必要です** — ないと読み手が方向を誤読します。
 
 ```bash
 cat <<EOF | officecli batch "$FILE"
@@ -505,64 +505,64 @@ cat <<EOF | officecli batch "$FILE"
 EOF
 ```
 
-Then 4 connectors (`Decide→YesBox`, `Decide→NoBox`, `YesBox→Done`, `NoBox→Done`) using the connector loop pattern from (c).
+続けて (c) のコネクタループパターンを使って 4 本のコネクタ（`Decide→YesBox`、`Decide→NoBox`、`YesBox→Done`、`NoBox→Done`）を追加。
 
-## QA (Required)
+## QA（必須）
 
-**Assume there are problems.** First render is almost never correct. If you found zero issues, you were not looking hard enough.
+**問題があると仮定すること。** 最初のレンダリングが正しいことはほぼありません。ゼロ件しか見つからなかったなら、見方が足りていません。
 
-### Delivery Gate (any failure = REJECT, do NOT deliver)
+### 納品ゲート（いずれかが失敗 = REJECT、納品しないこと）
 
-Gates 1–2b are text/schema-level (cannot see a rendered slide); Gate 3 is the only visual check. Done = every gate PASS **and** Gate 3 loop converged.
+Gate 1〜2b はテキスト/スキーマレベル（レンダリングされたスライドは見えません）；Gate 3 のみが唯一のビジュアルチェックです。完了 = すべてのゲートが PASS **かつ** Gate 3 のループが収束していること。
 
-Each gate is **run a command, judge its output** — the officecli commands are identical on every OS (macOS / Linux / Windows), so no shell scripting is needed; the judging is yours.
+各ゲートは「コマンドを実行し、その出力を判断する」形式です — officecli のコマンドはすべての OS（macOS / Linux / Windows）で同一なのでシェルスクリプトは不要です；判断はあなたが行います。
 
-- **Gate 1 — schema.** `officecli validate "<file>"`. Any schema error → REJECT and fix.
-- **Gate 2 — overflow / format / structure.** `officecli view "<file>" issues`. If it lists *any* issue (lines tagged `[O1]`, `[C1]`, `[S1]`, …) → REJECT, fix, re-run until clean.
-- **Gate 2b — leftover placeholders.** `officecli view "<file>" text`, then scan the output for `xxxx`, `lorem` / `ipsum`, `<TODO>`, `placeholder`, "this slide layout", or empty `()` / `[]`. Any hit → REJECT.
+- **Gate 1 — スキーマ。** `officecli validate "<file>"`。スキーマエラーが 1 つでもあれば → REJECT して修正。
+- **Gate 2 — オーバーフロー / フォーマット / 構造。** `officecli view "<file>" issues`。1 件でも問題（`[O1]`、`[C1]`、`[S1]` などのタグが付いた行）を列挙したら → REJECT、修正、クリーンになるまで再実行。
+- **Gate 2b — 残存プレースホルダー。** `officecli view "<file>" text` を実行し、出力を `xxxx`、`lorem` / `ipsum`、`<TODO>`、`placeholder`、"this slide layout"、または空の `()` / `[]` についてスキャンしてください。1 件でもヒットしたら → REJECT。
 
-### Gate 3 — Visual audit (MANDATORY)
+### Gate 3 — ビジュアル監査（必須）
 
-Pick **one** path:
+**1 つ**のパスを選んでください:
 
-**Screenshot (default)** — for vision-capable agents. Screenshot each slide in turn — `officecli view "<file>" screenshot --page 1 -o slide1.png`, then `--page 2`, … — until the page index runs past the deck (one screenshot = one slide). If it errors on page 1, use the fallback below.
+**スクリーンショット（デフォルト）** — ビジョン対応エージェント向け。各スライドを順にスクリーンショットしてください — `officecli view "<file>" screenshot --page 1 -o slide1.png`、続いて `--page 2`、… — ページ番号がデックを超えるまで（スクリーンショット 1 枚 = スライド 1 枚）。ページ 1 でエラーになる場合は下記のフォールバックを使ってください。
 
-**Judge every PNG against the checklist, adversarially** — "assume problems exist; finding none means you didn't look hard enough." Report one `slide N: <issue>` line per problem, or `PASS`. This step is required however you run it. **If** your harness can spawn a subagent, delegate the judging to a *fresh, independent* one — the agent that built the deck is biased toward "looks fine", a separate pair of eyes is more critical — handing it the screenshots + this checklist and the same adversarial framing. No subagent? Do exactly the same yourself.
+**すべての PNG をチェックリストに照らして敵対的に判定してください** — 「問題は存在すると仮定する；何も見つからないなら見方が足りていない」。問題ごとに `slide N: <issue>` の行を 1 つ、あるいは `PASS` を報告してください。この手順はどのように実行しても必須です。**もし**あなたのハーネスがサブエージェントを起動できるなら、判定は*独立した別の*サブエージェントに委ねてください — デックを構築したエージェントは「大丈夫そう」に偏りがちなので、別の目の方が批判的です — スクリーンショットとこのチェックリスト、同じ敵対的なフレーミングを渡してください。サブエージェントがない場合は、まったく同じことを自分で行ってください。
 
-**Fallback — HTML-text** (no vision, or screenshot failed): read `view "$FILE" html` as text. DOM cannot prove **dark-on-dark / fine overlap / arrowheads / gap-margin metrics / column alignment** — flag these as "not visually verified" rather than PASS.
+**フォールバック — HTML テキスト**（ビジョンがない、またはスクリーンショットが失敗した場合）: `view "$FILE" html` をテキストとして読んでください。DOM は**濃色 on 濃色 / 微細な重なり / 矢印 / ギャップ・マージンの数値 / カラムの整列**を証明できません — これらは PASS ではなく「ビジュアル未検証」としてフラグしてください。
 
-**Optional `--grid N`** — only on user request for layout-rhythm, or when `view outline` shows anomalous layout distribution: `officecli view "<file>" screenshot --grid 3 -o grid.png`.
+**任意の `--grid N`** — レイアウトのリズムをユーザーが要求した場合、または `view outline` が異常なレイアウト分布を示す場合のみ: `officecli view "<file>" screenshot --grid 3 -o grid.png`。
 
-**Per-slide checklist (assume issues exist):**
+**スライド単位のチェックリスト（問題があると仮定する）:**
 
-- **overlap** — shapes / charts / giant decorative numbers (01/02/03 100pt+) colliding
-- **text overflow** — clipped at slide or shape boundary (KPI cards, narrow boxes)
-- **narrow text box** — content fits technically but wraps to many short lines (1–2 words each); long sublabel in a 3cm KPI card, body line in a too-tight column
-- **dark-on-dark** — fill brightness < 30% with text/icon brightness < 80% (incl. dark icons on dark without a contrasting circle)
-- **image treatment** — photo stretched/distorted, text raw on a busy image (no card/scrim), screenshot or logo cropped, transparent image floating on white
-- **missing arrowheads** — flowchart connectors as plain lines
-- **decorative-line / title mismatch** — accent bar sized for one-line title but title wrapped to two (or vice versa)
-- **footer / citation collision** — source line, page number, or footnote touching content above
-- **tight margin / gap** — element within ~0.5" of slide edge, or two cards within ~0.3"
-- **uneven gaps** — large empty area on one side, cramped on another (broken rhythm)
-- **column / repeat-element misalignment** — KPI cards / icons off baseline or inconsistent width
-- **order sanity** — sequence matches narrative (cover → agenda → dividers-before-sections → closing)
+- **重なり** — シェイプ / チャート / 巨大な装飾番号（01/02/03、100pt 以上）の衝突
+- **テキストのオーバーフロー** — スライドまたはシェイプの境界でクリップされている（KPI カード、狭いボックス）
+- **狭いテキストボックス** — コンテンツは技術的には収まるが、1〜2 語ずつの短い行に多く折り返されている；3cm の KPI カード内の長いサブラベル、きつすぎるカラム内の本文行
+- **濃色 on 濃色** — 明度 30% 未満の塗りに、明度 80% 未満のテキスト/アイコン（コントラストのある円のない濃色アイコンを含む）
+- **画像の扱い** — 引き伸ばされ/歪んだ写真、ごちゃついた画像の上に直乗せされたテキスト（カード/スクリムなし）、クロップされたスクリーンショットやロゴ、白地の上に浮いた透過画像
+- **矢印の欠落** — 単なる線として描かれたフローチャートのコネクタ
+- **装飾線 / タイトルの不一致** — 1 行タイトル用のアクセントバーなのにタイトルが 2 行に折り返された（またはその逆）
+- **フッター / 出典の衝突** — 出典行、ページ番号、脚注が上のコンテンツに接触している
+- **タイトなマージン / ギャップ** — スライド端から ~0.5" 以内の要素、または 2 枚のカードが ~0.3" 以内
+- **不均一なギャップ** — 片側は大きな空きスペース、もう片側は詰まっている（リズムの崩れ）
+- **カラム / 反復要素のずれ** — KPI カード/アイコンがベースラインからずれている、または幅が一貫していない
+- **順序のサニティ** — 順序が物語と一致している（カバー → アジェンダ → セクション前の区切り → クロージング）
 
-REJECT with `slide N: <issue>` lines, else "Gate 3 PASS" (HTML-text fallback adds "<unverified-items> not visually verified").
+REJECT する場合は `slide N: <issue>` の行、そうでなければ "Gate 3 PASS"（HTML テキストのフォールバックの場合は「<unverified-items> は視覚的に未検証」を追加）。
 
-**Fix-verify (mandatory, max 3 cycles).** Fix → re-run Gate 3 → repeat until zero new issues; one fix often surfaces another. After 3 rounds without convergence, **stop** — likely seesaw, template-level cause, or agent misread. Report `slide N: <issue> — attempted: <fixes> — likely root: <template|design-conflict|ambiguous>` and let the user decide.
+**修正-検証（必須、最大 3 サイクル）。** 修正 → Gate 3 を再実行 → 新しい問題がゼロになるまで繰り返す；1 つの修正が別の問題を露呈することがよくあります。3 ラウンド経っても収束しない場合は**停止**してください — シーソー現象、テンプレートレベルの原因、またはエージェントの誤読の可能性が高いです。`slide N: <issue> — attempted: <fixes> — likely root: <template|design-conflict|ambiguous>` を報告し、ユーザーに判断を委ねてください。
 
-**Then flush (part of the gate).** Once Gate 3 converges, end with `officecli save "<file>"` — this guarantees your edits are written to disk before delivery (use `officecli close "<file>"` instead to also release the resident on a one-shot handoff). Required final step, not optional. Always safe: never errors or loses work.
+**そしてフラッシュする（ゲートの一部）。** Gate 3 が収束したら、`officecli save "<file>"` で締めくくってください — これにより納品前に編集がディスクに書き込まれることが保証されます（ワンショットのハンドオフでレジデントも解放したい場合は代わりに `officecli close "<file>"` を使ってください）。これは省略可能な手順ではなく必須の最終手順です。常に安全です: エラーになったり作業が失われたりすることはありません。
 
-## Common Pitfalls
+## よくある落とし穴
 
-Sanity-check cheatsheet — what breaks on the first try. Design + shell traps.
+サニティチェック用のチートシート — 初回で何がつまずくか。デザインとシェルの罠。
 
-| Pitfall | Correct approach |
+| 落とし穴 | 正しいアプローチ |
 |---|---|
-| Unquoted `[N]` in zsh/bash | Always quote paths: `"/slide[1]"`. zsh globs unquoted `[1]` → `no matches found` — #1 first-use stumble |
-| `--name "foo"` | All attributes go through `--prop`: `--prop name="foo"` |
-| `/shape[myname]` (bare name in brackets) | Use `@name=` selector: `/shape[@name=myname]` or `/shape[@id=10007]` |
-| Paths 1-based vs `--index` 0-based | `/slide[1]` = first slide; `--index 0` = first position |
-| `$` in `--prop text=` | Single-quote: `--prop text='$15M'`. Double-quoted `"$15M"` gets shell-expanded to `M` |
-| `\n` / `\t` in `--prop text=` | Interpreted by the CLI: `\n` = paragraph break, `\t` = tab. Double `\\n` for a literal |
+| zsh/bash でクォートされていない `[N]` | パスは常にクォート: `"/slide[1]"`。zsh はクォートされていない `[1]` をグロブして `no matches found` になる — 初回利用の #1 のつまずき |
+| `--name "foo"` | すべての属性は `--prop` を通す: `--prop name="foo"` |
+| `/shape[myname]`（角括弧に生の名前） | `@name=` セレクタを使う: `/shape[@name=myname]` または `/shape[@id=10007]` |
+| パスは 1-based、`--index` は 0-based | `/slide[1]` = 最初のスライド；`--index 0` = 最初の位置 |
+| `--prop text=` 内の `$` | シングルクォート: `--prop text='$15M'`。ダブルクォートの `"$15M"` はシェルにより `M` に展開される |
+| `--prop text=` 内の `\n` / `\t` | CLI により解釈される: `\n` = 段落区切り、`\t` = タブ。リテラルには `\\n` を二重にする |
