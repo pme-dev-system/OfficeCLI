@@ -1,73 +1,73 @@
 ---
 name: morph-ppt-3d
-description: 3D Morph PPT — extends morph-ppt with GLB model insertion, cinematographic camera, model-content layout, and enriched visual design system.
+description: 3D Morph PPT — GLB モデルの挿入、シネマティックなカメラワーク、モデルとコンテンツのレイアウト、強化されたビジュアルデザインシステムで morph-ppt を拡張します。
 ---
 
-# Morph PPT — 3D Extension
+# Morph PPT — 3D 拡張
 
-This skill **extends** `morph-ppt`. All morph-ppt rules (naming, ghosting, design, verification) apply in full.
-This file covers **3D-specific additions** and an **enriched design system** combining morph-ppt aesthetics with concrete color palettes, font pairings, and layout quality guardrails.
+このスキルは `morph-ppt` を**拡張**するものです。morph-ppt の全ルール（命名、ゴースト表示、デザイン、検証）はそのまま適用されます。
+本ファイルは **3D 固有の追加事項**と、morph-ppt の美学に具体的なカラーパレット・フォントの組み合わせ・レイアウト品質のガードレールを組み合わせた**強化されたデザインシステム**を扱います。
 
 ---
 
-## Setup
+## セットアップ
 
-If `officecli` is missing:
+`officecli` が存在しない場合：
 
 - **macOS / Linux**: `curl -fsSL https://d.officecli.ai/install.sh | bash`
 - **Windows (PowerShell)**: `irm https://d.officecli.ai/install.ps1 | iex`
 
-Verify with `officecli --version` (open a new terminal if PATH hasn't picked up). If install fails, download a binary from https://github.com/iOfficeAI/OfficeCLI/releases.
+`officecli --version` で確認してください（PATH が反映されていない場合は新しいターミナルを開いてください）。インストールに失敗した場合は https://github.com/iOfficeAI/OfficeCLI/releases からバイナリをダウンロードしてください。
 
-## Use when
+## 使用場面
 
-- User wants a `.pptx` with a `.glb` 3D model and Morph transitions.
-
----
-
-## 3D Model Compatibility Gate (before generation)
-
-1. Only `.glb` is supported. If user provides `.fbx` / `.obj` / `.blend` / `.usdz` / `.gltf`, ask them to convert to `.glb` first (e.g. via Blender export).
-2. If user has no model, follow the **Model Discovery Flow** below.
-3. All files (`.glb`, `.pptx`, build script) must be in the same working directory.
+- ユーザーが `.glb` の 3D モデルと Morph トランジションを含む `.pptx` を求めている場合。
 
 ---
 
-## Model Discovery Flow (when user has no model)
+## 3D モデル互換性ゲート（生成前）
 
-When the user gives a topic but no `.glb` file, **proactively help them find a matching model** instead of just listing websites.
+1. サポートされるのは `.glb` のみです。ユーザーが `.fbx` / `.obj` / `.blend` / `.usdz` / `.gltf` を提供した場合は、まず `.glb` に変換するよう依頼してください（例：Blender でのエクスポート経由）。
+2. ユーザーがモデルを持っていない場合は、以下の**モデル探索フロー**に従ってください。
+3. すべてのファイル（`.glb`、`.pptx`、ビルドスクリプト）は同一の作業ディレクトリに置く必要があります。
 
-### Step 1: Understand the topic and suggest model direction
+---
 
-Based on the user's topic, suggest what kind of 3D model would work:
+## モデル探索フロー（ユーザーがモデルを持っていない場合）
 
-| Topic type         | Model suggestion                    | Example                                               |
-| ------------------ | ----------------------------------- | ----------------------------------------------------- |
-| Product/brand      | The actual product or a similar one | "coffee brand" → coffee cup, coffee machine, bean     |
-| Animal/character   | The animal or mascot                | "fox mascot" → fox 3D model                           |
-| Architecture/space | Building, room, or structure        | "new office" → office building, interior              |
-| Vehicle/transport  | The vehicle itself                  | "EV launch" → car, motorcycle, bicycle                |
-| Food/cooking       | The dish or ingredient              | "Japanese food" → sushi platter, ramen bowl           |
-| Tech/gadget        | The device                          | "phone launch" → phone, tablet, laptop                |
-| Nature/science     | The subject                         | "solar system" → planet, sun, earth                   |
-| Abstract concept   | A symbolic object                   | "teamwork" → puzzle pieces, gears, bridge             |
+ユーザーがトピックを提示したがモデルファイルを持っていない場合、単にウェブサイトを列挙するのではなく、**マッチするモデルを見つけるのを積極的に手伝ってください**。
 
-Tell the user: "Your topic is [X]. I suggest using a 3D model of [description]. Here are some free sources to find one:"
+### ステップ1：トピックを理解し、モデルの方向性を提案する
 
-### Step 2: Search for models (agent-driven)
+ユーザーのトピックに基づいて、どのような3Dモデルが合うかを提案します。
 
-**Proactively search for models on behalf of the user.** Don't just list websites — actually find candidates.
+| トピックの種類     | モデルの提案                       | 例                                                     |
+| ------------------ | ----------------------------------- | ------------------------------------------------------- |
+| 製品／ブランド     | 実際の製品または類似のもの           | 「コーヒーブランド」→ コーヒーカップ、コーヒーマシン、豆 |
+| 動物／キャラクター | その動物またはマスコット             | 「キツネのマスコット」→ キツネの3Dモデル                |
+| 建築／空間         | 建物、部屋、または構造物             | 「新オフィス」→ オフィスビル、内観                       |
+| 乗り物／交通       | 乗り物そのもの                       | 「EVの発表」→ 車、バイク、自転車                        |
+| 食品／料理         | 料理または食材                       | 「和食」→ 寿司の盛り合わせ、ラーメンの丼                |
+| テック／ガジェット | デバイス                             | 「電話の発表」→ 電話、タブレット、ノートPC              |
+| 自然／科学         | その対象物                           | 「太陽系」→ 惑星、太陽、地球                            |
+| 抽象概念           | 象徴的なオブジェクト                 | 「チームワーク」→ パズルのピース、歯車、橋              |
 
-**Search strategy (try in order):**
+ユーザーに次のように伝えてください：「あなたのトピックは [X] ですね。[説明] の3Dモデルの使用をお勧めします。無料で見つけられるソースをいくつか紹介します：」
 
-1. **Web search** for free GLB models matching the topic:
+### ステップ2：モデルを検索する（エージェント主導）
+
+**ユーザーに代わって積極的にモデルを検索してください。** ウェブサイトを列挙するだけでなく、実際に候補を見つけてください。
+
+**検索戦略（この順序で試す）：**
+
+1. トピックに合った無料の GLB モデルを**ウェブ検索**：
 
    ```
    Search: "[topic keyword] 3d model glb free download"
    Example: "fox 3d model glb free download"
    ```
 
-2. **Sketchfab API** (no auth needed for search):
+2. **Sketchfab API**（検索には認証不要）：
 
    ```bash
    curl -s "https://api.sketchfab.com/v3/search?type=models&q=[keyword]&downloadable=true&archives_flavours=glb" \
@@ -82,30 +82,30 @@ Tell the user: "Your topic is [X]. I suggest using a 3D model of [description]. 
    "
    ```
 
-3. **Poly Pizza** (direct GLB download, all free):
+3. **Poly Pizza**（GLB を直接ダウンロード、すべて無料）：
 
    ```bash
    # Search results page — parse for download links
    curl -s "https://poly.pizza/api/search/[keyword]" 2>/dev/null
    ```
 
-4. **Khronos glTF-Sample-Assets** (guaranteed to work, always available):
+4. **Khronos glTF-Sample-Assets**（動作保証あり、常時利用可能）：
    ```bash
    # Direct download — no auth, no API, always works
    curl -L -o model.glb "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/[ModelName]/glTF-Binary/[ModelName].glb"
    ```
-   Available models: Duck, Fox, Avocado, BrainStem, CesiumMan, DamagedHelmet, FlightHelmet, Lantern, Suzanne, WaterBottle, etc.
+   利用可能なモデル：Duck、Fox、Avocado、BrainStem、CesiumMan、DamagedHelmet、FlightHelmet、Lantern、Suzanne、WaterBottle など。
 
-### Step 3: Present candidates to user for confirmation
+### ステップ3：確認のために候補をユーザーに提示する
 
-Show the user 2-3 model options with:
+以下を含む2〜3個のモデル候補をユーザーに提示します：
 
-- Model name and source
-- Preview link (Sketchfab URL or description)
-- License info
-- Why this model fits their topic
+- モデル名と出典
+- プレビューリンク（Sketchfab の URL や説明）
+- ライセンス情報
+- このモデルがトピックに合う理由
 
-Example response:
+応答例：
 
 ```
 Based on your topic "fox mascot", here are some models I found:
@@ -127,11 +127,11 @@ Based on your topic "fox mascot", here are some models I found:
 Which one do you want? I'll download it and start building.
 ```
 
-**Wait for user confirmation before downloading.** Do not download without asking.
+**ダウンロード前に必ずユーザーの確認を待ってください。** 確認なしにダウンロードしないでください。
 
-### Step 4: Download the confirmed model
+### ステップ4：確定したモデルをダウンロードする
 
-After user confirms, download directly:
+ユーザーが確認したら、直接ダウンロードします：
 
 ```bash
 # For Sketchfab (if user has the download URL)
@@ -141,163 +141,163 @@ curl -L -o model.glb "[download_url]"
 curl -L -o model.glb "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Fox/glTF-Binary/Fox.glb"
 ```
 
-After download, verify:
+ダウンロード後、以下を確認してください：
 
-- File exists and is not empty
-- File extension is `.glb`
-- File size is under 50MB
+- ファイルが存在し、空でないこと
+- 拡張子が `.glb` であること
+- ファイルサイズが 50MB 未満であること
 
-If Sketchfab requires login to download, tell the user:
+Sketchfab がダウンロードにログインを要求する場合は、ユーザーに次のように伝えてください：
 
-> "This model requires a Sketchfab login to download. You can grab the .glb file from the page and share it with me. Or I can use a Khronos sample model for a demo version first?"
+> 「このモデルは Sketchfab へのログインがないとダウンロードできません。ページから .glb ファイルを取得して私に共有していただくか、まずは Khronos のサンプルモデルでデモ版を作成することもできます。」
 
-### Step 5: When user says "anything" / "you decide" / "just make a demo"
+### ステップ5：ユーザーが「何でもいい」／「お任せ」／「デモだけ作って」と言った場合
 
-**Don't just grab a random model.** First guide the user to clarify their PPT topic:
+**ランダムなモデルを適当に選ばないでください。** まずユーザーに PPT のトピックを明確にしてもらうよう促します：
 
-> Sure! I'll handle the model — but let me confirm the topic direction first so the model matches the content:
+> もちろんです！モデルは私が手配しますが、まずコンテンツに合うモデルになるようトピックの方向性を確認させてください：
 >
-> 1. Tech/Product — headphones, phone, robot...
-> 2. Animal/Character — cute pet, cartoon character...
-> 3. Architecture/Space — building, interior, city...
-> 4. Food/Lifestyle — dishes, everyday objects...
-> 5. Other — just tell me your idea
+> 1. テック／製品 — ヘッドホン、電話、ロボットなど
+> 2. 動物／キャラクター — かわいいペット、アニメキャラクターなど
+> 3. 建築／空間 — 建物、内観、街並みなど
+> 4. 食品／ライフスタイル — 料理、日用品など
+> 5. その他 — アイデアを教えてください
 >
-> Pick a direction, or just give me a topic keyword.
+> 方向性を選ぶか、トピックのキーワードを一つ教えてください。
 
-After user confirms a direction, THEN search and recommend models.
+ユーザーが方向性を確認した**後で**、モデルを検索・推薦してください。
 
-### Step 6: When user wants to find models themselves
+### ステップ6：ユーザーが自分でモデルを探したい場合
 
-Give specific website links with step-by-step guidance:
+具体的なウェブサイトのリンクとステップごとのガイダンスを提供します：
 
-> **Recommended 3D model websites:**
+> **おすすめの3Dモデルサイト：**
 >
-> 1. **Sketchfab** (largest 3D model platform)
->    - Link: https://sketchfab.com/search?q=[keyword]&type=models&downloadable=true
->    - Filter steps: search keyword → check "Downloadable" → format "glTF" → sort by "Likes"
->    - When downloading, select **glTF (.glb)** format
->    - Note: some models require free registration to download
-> 2. **Poly Pizza** (all free low-poly)
->    - Link: https://poly.pizza/
->    - All CC0 licensed — click Download to get .glb directly
->    - Best for: minimalist or cartoon-style presentations
-> 3. **Sketchfab popular categories**
->    - Animals: https://sketchfab.com/search?q=animal&type=models&downloadable=true
->    - Food: https://sketchfab.com/search?q=food&type=models&downloadable=true
->    - Tech: https://sketchfab.com/search?q=gadget&type=models&downloadable=true
->    - Architecture: https://sketchfab.com/search?q=architecture&type=models&downloadable=true
-> 4. **Free3D** (general free model site)
->    - Link: https://free3d.com/3d-models/glb
->    - Note: check the license type before use
-> 5. **TurboSquid Free** (pro model site free section)
->    - Link: https://www.turbosquid.com/Search/3D-Models/free/glb
+> 1. **Sketchfab**（最大の3Dモデルプラットフォーム）
+>    - リンク: https://sketchfab.com/search?q=[keyword]&type=models&downloadable=true
+>    - 絞り込み手順：キーワード検索 → 「Downloadable」にチェック → フォーマット「glTF」→「Likes」でソート
+>    - ダウンロード時は **glTF (.glb)** フォーマットを選択
+>    - 注意：一部のモデルは無料登録が必要
+> 2. **Poly Pizza**（すべて無料のローポリ）
+>    - リンク: https://poly.pizza/
+>    - すべて CC0 ライセンス — Download をクリックすれば直接 .glb を取得可能
+>    - 最適：ミニマルまたはカートゥーン調のプレゼンテーション
+> 3. **Sketchfab の人気カテゴリ**
+>    - 動物: https://sketchfab.com/search?q=animal&type=models&downloadable=true
+>    - 食品: https://sketchfab.com/search?q=food&type=models&downloadable=true
+>    - テック: https://sketchfab.com/search?q=gadget&type=models&downloadable=true
+>    - 建築: https://sketchfab.com/search?q=architecture&type=models&downloadable=true
+> 4. **Free3D**（一般的な無料モデルサイト）
+>    - リンク: https://free3d.com/3d-models/glb
+>    - 注意：使用前にライセンス種別を確認してください
+> 5. **TurboSquid Free**（プロ向けモデルサイトの無料セクション）
+>    - リンク: https://www.turbosquid.com/Search/3D-Models/free/glb
 >
-> After downloading, share the .glb file with me. If the download is a .gltf folder, use Blender to convert it to .glb.
+> ダウンロード後、.glb ファイルを私に共有してください。ダウンロードしたものが .gltf フォルダの場合は、Blender で .glb に変換してください。
 
-### Step 7: When user gives keywords and asks agent to search
+### ステップ7：ユーザーがキーワードを提示し、エージェントに検索を依頼した場合
 
-**Remind about token cost before searching:**
+**検索前にトークンコストについて念のため伝えてください：**
 
-> I can search for you, but web searches use extra tokens. Would you prefer:
+> 検索は可能ですが、ウェブ検索には追加でトークンを消費します。どちらがよいですか：
 >
-> A. I search — I use the Sketchfab API and recommend 2-3 options (uses a few tokens)
-> B. Self-service — I give you search links and filter steps, you pick and share with me (no extra tokens)
+> A. エージェントが検索 — Sketchfab API を使い、2〜3個の候補を推薦します（トークンを少し消費）
+> B. セルフサービス — 検索リンクと絞り込み手順をお伝えするので、選んでから共有してください（追加トークンなし）
 >
-> A or B?
+> A か B、どちらにしますか？
 
-If user chooses A, proceed with Step 2 (agent-driven search).
-If user chooses B, proceed with Step 6 (self-service guidance).
+ユーザーが A を選んだ場合は、ステップ2（エージェント主導の検索）に進みます。
+ユーザーが B を選んだ場合は、ステップ6（セルフサービスガイダンス）に進みます。
 
-### License reminder
+### ライセンスに関する注意喚起
 
-Always remind before confirming download: "Please check the model license before downloading. CC0 / CC BY = free to use; CC BY-NC = non-commercial only."
+ダウンロードを確定する前に必ず念押ししてください：「ダウンロード前にモデルのライセンスを確認してください。CC0 / CC BY = 無料で利用可、CC BY-NC = 非商用利用のみ。」
 
 ---
 
-## Visual Design System (4.0 enrichment)
+## ビジュアルデザインシステム（4.0 強化版）
 
-morph-ppt provides the base design rules. This section adds **concrete palettes, font pairings, and layout quality rules** from PPT Creator to give the AI more variety and stronger guardrails.
+morph-ppt はベースとなるデザインルールを提供します。このセクションでは、PPT Creator から取り入れた**具体的なパレット、フォントの組み合わせ、レイアウト品質ルール**を追加し、AI により多様性と強力なガードレールを与えます。
 
-### Color Palettes (pick one per deck, or blend)
+### カラーパレット（1デッキにつき1つを選択、または混合）
 
-Choose a palette that matches the **topic mood** — don't default to generic blue.
+**トピックの雰囲気**に合ったパレットを選んでください — 汎用的な青をデフォルトにしないこと。
 
-| Palette                | Primary               | Secondary             | Accent           | Body Text | Muted/Caption |
+| パレット                | プライマリ             | セカンダリ             | アクセント       | 本文テキスト | ミュート／キャプション |
 | ---------------------- | --------------------- | --------------------- | ---------------- | --------- | ------------- |
-| **Coral Energy**       | `F96167` (coral)      | `F9E795` (gold)       | `2F3C7E` (navy)  | `333333`  | `8B7E6A`      |
-| **Midnight Executive** | `1E2761` (navy)       | `CADCFC` (ice blue)   | `FFFFFF`         | `333333`  | `8899BB`      |
-| **Forest & Moss**      | `2C5F2D` (forest)     | `97BC62` (moss)       | `F5F5F5` (cream) | `2D2D2D`  | `6B8E6B`      |
-| **Charcoal Minimal**   | `36454F` (charcoal)   | `F2F2F2` (off-white)  | `212121`         | `333333`  | `7A8A94`      |
-| **Warm Terracotta**    | `B85042` (terracotta) | `E7E8D1` (sand)       | `A7BEAE` (sage)  | `3D2B2B`  | `8C7B75`      |
-| **Berry & Cream**      | `6D2E46` (berry)      | `A26769` (dusty rose) | `ECE2D0` (cream) | `3D2233`  | `8C6B7A`      |
-| **Ocean Gradient**     | `065A82` (deep blue)  | `1C7293` (teal)       | `21295C`         | `2B3A4E`  | `6B8FAA`      |
-| **Teal Trust**         | `028090` (teal)       | `00A896` (seafoam)    | `02C39A` (mint)  | `2D3B3B`  | `5E8C8C`      |
-| **Sage Calm**          | `84B59F` (sage)       | `69A297` (eucalyptus) | `50808E`         | `2D3D35`  | `7A9488`      |
-| **Cherry Bold**        | `990011` (cherry)     | `FCF6F5` (off-white)  | `2F3C7E` (navy)  | `333333`  | `8B6B6B`      |
+| **Coral Energy**       | `F96167` (コーラル)      | `F9E795` (ゴールド)       | `2F3C7E` (ネイビー)  | `333333`  | `8B7E6A`      |
+| **Midnight Executive** | `1E2761` (ネイビー)       | `CADCFC` (アイスブルー)   | `FFFFFF`         | `333333`  | `8899BB`      |
+| **Forest & Moss**      | `2C5F2D` (フォレスト)     | `97BC62` (モス)       | `F5F5F5` (クリーム) | `2D2D2D`  | `6B8E6B`      |
+| **Charcoal Minimal**   | `36454F` (チャコール)   | `F2F2F2` (オフホワイト)  | `212121`         | `333333`  | `7A8A94`      |
+| **Warm Terracotta**    | `B85042` (テラコッタ) | `E7E8D1` (サンド)       | `A7BEAE` (セージ) | `3D2B2B`  | `8C7B75`      |
+| **Berry & Cream**      | `6D2E46` (ベリー)      | `A26769` (ダスティローズ) | `ECE2D0` (クリーム) | `3D2233`  | `8C6B7A`      |
+| **Ocean Gradient**     | `065A82` (深青)  | `1C7293` (ティール)      | `21295C`         | `2B3A4E`  | `6B8FAA`      |
+| **Teal Trust**         | `028090` (ティール)      | `00A896` (シーフォーム)    | `02C39A` (ミント)     | `2D3B3B`  | `5E8C8C`      |
+| **Sage Calm**          | `84B59F` (セージ)       | `69A297` (ユーカリ) | `50808E`         | `2D3D35`  | `7A9488`      |
+| **Cherry Bold**        | `990011` (チェリー)     | `FCF6F5` (オフホワイト) | `2F3C7E` (ネイビー)  | `333333`  | `8B6B6B`      |
 
-**Rules:**
+**ルール：**
 
-- One color dominates (60-70% visual weight), 1-2 supporting tones, one accent
-- On light backgrounds: use Body Text color for copy, Muted for captions
-- On dark backgrounds: use Secondary or `FFFFFF` for copy, Muted for captions
-- For additional inspiration, browse `../morph-ppt/reference/styles/INDEX.md` — 50+ visual styles organized by mood (dark, light, warm, vivid, bw). Read `style.md` for design philosophy, `build.sh` for implementation reference. **Learn the approach, do not copy coordinates verbatim**
+- 1色を支配色にし（視覚的ウェイトの60〜70%）、1〜2色の補助トーンと1色のアクセントを使う
+- 明るい背景では：本文には「本文テキスト」色、キャプションには「ミュート」色を使う
+- 暗い背景では：本文には「セカンダリ」または `FFFFFF` を、キャプションには「ミュート」色を使う
+- さらなるインスピレーションが欲しい場合は `../morph-ppt/reference/styles/INDEX.md` を参照 — 雰囲気（ダーク、ライト、暖色、鮮やか、白黒）別に整理された50以上のビジュアルスタイル。デザイン思想については `style.md` を、実装の参考には `build.sh` を読んでください。**アプローチを学ぶのであって、座標をそのままコピーしないこと**
 
-### Font Pairings (pick one per deck)
+### フォントの組み合わせ（1デッキにつき1つを選択）
 
-| Header Font  | Body Font     | Best For                         |
+| 見出しフォント  | 本文フォント     | 最適な用途                         |
 | ------------ | ------------- | -------------------------------- |
-| Georgia      | Calibri       | Formal business, finance         |
-| Arial Black  | Arial         | Bold marketing, product launches |
-| Calibri      | Calibri Light | Clean corporate, minimal         |
-| Cambria      | Calibri       | Traditional professional         |
-| Trebuchet MS | Calibri       | Friendly tech, startups          |
-| Impact       | Arial         | Bold headlines, keynotes         |
-| Palatino     | Garamond      | Elegant editorial, luxury        |
-| Consolas     | Calibri       | Developer tools, technical       |
+| Georgia      | Calibri       | フォーマルなビジネス、金融         |
+| Arial Black  | Arial         | 大胆なマーケティング、製品発表 |
+| Calibri      | Calibri Light | クリーンなコーポレート、ミニマル |
+| Cambria      | Calibri       | 伝統的なプロフェッショナル |
+| Trebuchet MS | Calibri       | フレンドリーなテック、スタートアップ |
+| Impact       | Arial         | 大胆な見出し、基調講演 |
+| Palatino     | Garamond      | エレガントなエディトリアル、ラグジュアリー |
+| Consolas     | Calibri       | 開発者ツール、テクニカル |
 
-### Hard Rules (mandatory, no exceptions)
+### ハードルール（必須、例外なし）
 
-**H4 — Body text minimum 16pt:**
-All body text, card content, and bullet points must be >= 16pt. "Content doesn't fit" is not an excuse — reduce text, split slides, or reduce card count instead. Exceptions: chart axis labels (<=12pt), short sublabels (<=14pt, max 5 words), footnotes.
+**H4 — 本文テキストは最小16pt：**
+すべての本文テキスト、カードコンテンツ、箇条書きは16pt以上でなければなりません。「内容が収まらない」は言い訳になりません — 代わりにテキストを削減する、スライドを分割する、カード数を減らすなどしてください。例外：チャートの軸ラベル（12pt以下）、短いサブラベル（14pt以下、最大5単語）、脚注。
 
-**H6 — Dark background contrast:**
-When slide background brightness < 30% (e.g. `1E2761`, `36454F`, `000000`), ALL body text, card content, chart labels, and icon fills MUST use white (`FFFFFF`) or near-white (brightness > 80%). Never use mid-gray or muted colors as body text on dark backgrounds.
+**H6 — 暗い背景でのコントラスト：**
+スライド背景の明度が30%未満の場合（例：`1E2761`、`36454F`、`000000`）、すべての本文テキスト、カードコンテンツ、チャートラベル、アイコンの塗りつぶしは白（`FFFFFF`）または白に近い色（明度80%超）を使用する**必要があります**。暗い背景の本文テキストに中間グレーやミュートカラーを絶対に使わないこと。
 
-**H7 — Speaker notes required:**
-Every content slide (not title/closing) MUST have speaker notes. Use:
+**H7 — スピーカーノート必須：**
+すべてのコンテンツスライド（タイトル／クロージングを除く）にはスピーカーノートが**必須**です。以下を使用してください：
 
 ```bash
 officecli add deck.pptx '/slide[N]' --type notes --prop text="..."
 ```
 
-### Visual Element Checkpoint
+### ビジュアル要素チェックポイント
 
-**Every 3 content slides, at least 1 must contain a non-text visual element:**
+**コンテンツスライド3枚ごとに、少なくとも1枚はテキスト以外のビジュアル要素を含める必要があります：**
 
-| Visual type            | Implementation                               |
+| ビジュアルの種類            | 実装方法                               |
 | ---------------------- | -------------------------------------------- |
-| Icon in colored circle | ellipse shape + centered text/number overlay |
-| Colored block          | `preset=roundRect` with fill                 |
-| Large stat number      | `size=64, bold=true` with small label below  |
-| Chart                  | `--type chart` (column/pie/line)             |
-| Gradient background    | `background=COLOR1-COLOR2-180`               |
-| Shape composition      | circles + connectors for diagrams            |
+| 色付き円内のアイコン | 楕円形シェイプ + 中央にテキスト／数字をオーバーレイ |
+| 色付きブロック          | `preset=roundRect` に塗りつぶし                 |
+| 大きな統計数値      | `size=64, bold=true` + 下に小さいラベル  |
+| チャート                  | `--type chart`（棒／円／折れ線）             |
+| グラデーション背景    | `background=COLOR1-COLOR2-180`               |
+| シェイプ構成      | 図解のための円 + コネクタ |
 
-Text-only slides are only allowed for: quotes, code examples, pure tables.
+テキストのみのスライドが許容されるのは以下の場合のみです：引用、コード例、純粋な表。
 
 ---
 
-## 3D Model Insertion Rules
+## 3D モデル挿入ルール
 
-### Add model fresh on every slide — NEVER clone
+### モデルは各スライドで毎回新規追加 — クローンは絶対禁止
 
-`morph_clone_slide` copies the model as frozen XML. The cloned model cannot Morph.
-Each slide must call `add --type 3dmodel` independently with the **same `name`** prop.
+`morph_clone_slide` はモデルを凍結された XML としてコピーします。クローンされたモデルは Morph できません。
+各スライドは独立して `add --type 3dmodel` を呼び出し、**同じ `name`** プロパティを使う必要があります。
 
-**⚠️ CRITICAL: If you clone a slide that already has a 3D model, the old model XML is copied too. This creates TWO model3d elements with the same name on the new slide. PowerPoint cannot handle this conflict and will delete the model content during repair.**
+**⚠️ 重要：すでに 3D モデルを持つスライドをクローンすると、古いモデルの XML もコピーされます。これにより、新しいスライド上に同じ `name` を持つ model3d 要素が2つ生成されます。PowerPoint はこの競合を処理できず、修復時にモデルコンテンツを削除してしまいます。**
 
-If you must clone a slide for scene actors, **immediately remove the cloned model before adding a new one:**
+シーンのアクター用にスライドをクローンする必要がある場合は、**クローンされたモデルを新しいモデルを追加する前に即座に削除してください：**
 
 ```bash
 # After cloning slide 1 to slide 2:
@@ -305,7 +305,7 @@ officecli remove deck.pptx '/slide[2]/model3d[1]'  # remove the frozen clone
 officecli add deck.pptx '/slide[2]' --type 3dmodel ...  # add fresh model
 ```
 
-**Recommended approach: Do NOT clone slides with 3D models at all.** Create all slides empty first, then add models fresh on each.
+**推奨アプローチ：3D モデルを含むスライドは一切クローンしないこと。** まずすべてのスライドを空の状態で作成し、それぞれに毎回新規でモデルを追加してください。
 
 ```bash
 # Slide 1
@@ -321,65 +321,65 @@ officecli add deck.pptx '/slide[2]' --type 3dmodel \
   --prop roty=50
 ```
 
-### Controllable properties
+### 制御可能なプロパティ
 
-| Property          | What it does              | Notes                                         |
-| ----------------- | ------------------------- | --------------------------------------------- |
-| `x`, `y`          | Position on slide         | Standard slide coordinates                    |
-| `width`, `height` | Frame size                | Model renders inside this frame               |
-| `name`            | Shape name                | Must be identical across slides for Morph     |
-| `roty`            | Y-axis rotation (degrees) | Primary storytelling axis                     |
-| `rotx`            | X-axis tilt (degrees)     | Range -25 to +40. See Camera Language section |
-| `rotz`            | Z-axis roll (degrees)     | Rarely needed                                 |
+| プロパティ          | 何をするか              | 補足                                         |
+| ----------------- | ------------------------ | ----------------------------------------------- |
+| `x`, `y`          | スライド上の位置         | 標準的なスライド座標                    |
+| `width`, `height` | フレームサイズ                | モデルはこのフレーム内にレンダリングされる               |
+| `name`            | シェイプ名                | Morph のためにスライド間で同一である必要がある     |
+| `roty`            | Y軸回転（度） | 主要なストーリーテリング軸                         |
+| `rotx`            | X軸のチルト（度）     | 範囲は -25 〜 +40。「カメラ言語」セクション参照 |
+| `rotz`            | Z軸のロール（度）     | ほとんど必要ない                                    |
 
-### Do NOT manually set
+### 手動で設定してはいけないもの
 
-- `meterPerModelUnit` — auto-computed from GLB bounding box
-- `preTrans` — auto-computed for model centering
-- `camera` depth/position — auto-computed to fit the model
-- Never use `raw-set` on any 3D transform parameter
+- `meterPerModelUnit` — GLB のバウンディングボックスから自動計算される
+- `preTrans` — モデルのセンタリングのために自動計算される
+- `camera` の深度／位置 — モデルに合わせて自動計算される
+- いかなる 3D 変換パラメータにも `raw-set` を絶対に使わないこと
 
 ---
 
-## Model-Content Layout
+## モデル・コンテンツレイアウト
 
-### Core Principle: Model IS the Subject
+### 核となる原則：モデルが主役である
 
-The model must feel like the **protagonist** of the presentation, not a sidebar decoration.
-Text supports the model; the model does not decorate the text.
+モデルはプレゼンテーションの**主人公**であるべきで、サイドバーの装飾ではありません。
+テキストはモデルを支えるものであり、モデルはテキストを装飾するものではありません。
 
-### Size Contrast Rule (MANDATORY)
+### サイズコントラストルール（必須）
 
-Adjacent slides must have a model area ratio >= 1.5x or <= 0.67x.
-Compute area as `width × height`. If slide N model is 16×15=240 cm², slide N+1 must be >= 360 or <= 160.
+隣り合うスライドのモデルの面積比は 1.5倍以上、または 0.67倍以下でなければなりません。
+面積は `幅 × 高さ` で計算します。スライド N のモデルが 16×15=240 cm² の場合、スライド N+1 は 360 以上、または 160 以下である必要があります。
 
-**Never use similar sizes on consecutive slides.** This is the single most important rule for visual energy.
+**連続するスライドで似たようなサイズを絶対に使わないこと。** これは視覚的なエネルギーを保つための最も重要なルールです。
 
-| Size tier      | Width   | Height  | Area (approx) | When to use                                |
-| -------------- | ------- | ------- | ------------- | ------------------------------------------ |
-| **XL (bleed)** | 28-36cm | 22-28cm | 600-1000      | Close-up, model extends beyond slide edges |
-| **L (hero)**   | 18-24cm | 15-19cm | 270-456       | Title, closing, dramatic moments           |
-| **M (split)**  | 13-17cm | 12-16cm | 156-272       | Standard content pages with text           |
-| **S (accent)** | 5-10cm  | 5-10cm  | 25-100        | Data-heavy pages, model as icon            |
+| サイズ階層      | 幅   | 高さ  | 面積（目安） | 使用場面                                |
+| -------------- | ------- | ------- | -------------- | ------------------------------------------ |
+| **XL（フルブリード）** | 28-36cm | 22-28cm | 600-1000      | クローズアップ、モデルがスライドの端からはみ出す |
+| **L（ヒーロー）**   | 18-24cm | 15-19cm | 270-456       | タイトル、クロージング、印象的な瞬間        |
+| **M（分割）**  | 13-17cm | 12-16cm | 156-272       | テキストを伴う標準的なコンテンツページ           |
+| **S（アクセント）** | 5-10cm  | 5-10cm  | 25-100        | データ量の多いページ、アイコンとしてのモデル        |
 
-### Layout Patterns (6 types)
+### レイアウトパターン（6種類）
 
-**A — Model right, content left** (content pages)
-Content at x=1-14cm. Model at x=15-20cm, width 14-18cm.
+**A — モデル右、コンテンツ左**（コンテンツページ）
+コンテンツは x=1-14cm。モデルは x=15-20cm、幅 14-18cm。
 
-**B — Model left, content right** (alternate with A)
-Model at x=0-2cm, width 14-18cm. Content at x=18-32cm.
+**B — モデル左、コンテンツ右**（A と交互に使用）
+モデルは x=0-2cm、幅 14-18cm。コンテンツは x=18-32cm。
 
-**C — Model centered, text overlay** (title/closing)
-Model centered large (18-24cm). Text at slide top or bottom.
+**C — モデル中央配置、テキストオーバーレイ**（タイトル／クロージング）
+モデルは中央に大きく配置（18-24cm）。テキストはスライドの上部または下部。
 
-**D — Model small corner, content dominant** (data pages)
-Model 5-10cm in any corner. Content fills the rest.
+**D — モデルは小さく隅に、コンテンツが主体**（データページ）
+モデルはいずれかの隅に 5-10cm。コンテンツが残りを埋める。
 
-**E — Model as backdrop** (impact/quote pages)
-Model XL (28-36cm), centered, partially cropped by slide edges.
-Text overlaid directly on top of model area with high-contrast color.
-The model becomes the "canvas" — text lives inside the model's space.
+**E — 背景としてのモデル**（インパクト／引用ページ）
+モデルは XL（28-36cm）、中央配置、スライドの端で一部トリミングされる。
+テキストはモデル領域の上に高コントラストの色で直接オーバーレイされる。
+モデルが「キャンバス」となり、テキストがモデルの空間の中に存在する。
 
 ```bash
 # Pattern E: model fills slide as backdrop
@@ -395,9 +395,9 @@ officecli add deck.pptx '/slide[N]' --type shape \
   --prop size=44 --prop bold=true --prop color=FFFFFF --prop fill=none
 ```
 
-**F — Model bleed edge** (transition/teaser pages)
-Model partially off-screen (negative x or y, or x+width > 33.87cm).
-Only part of the model visible — implies more beyond the frame.
+**F — モデルのはみ出し**（トランジション／ティーザーページ）
+モデルが画面の一部からはみ出す（負の x または y、あるいは x+width > 33.87cm）。
+モデルの一部だけが見える — フレームの外にさらに何かがあることを示唆する。
 
 ```bash
 # Pattern F: model bleeds off right edge
@@ -407,9 +407,9 @@ officecli add deck.pptx '/slide[N]' --type 3dmodel \
   --prop roty=70
 ```
 
-### Layout Progression
+### レイアウトの進行
 
-Never repeat the same pattern on consecutive slides. Example:
+連続するスライドで同じパターンを繰り返さないこと。例：
 
 ```
 Slide 1: C (centered hero, L)
@@ -421,109 +421,109 @@ Slide 6: B (model left, M)           ← grow
 Slide 7: C (centered closing, L)     ← push in
 ```
 
-### Text Layout Safety (MANDATORY)
+### テキストレイアウトの安全性（必須）
 
-**Text boxes must never overlap each other or the model frame.**
+**テキストボックス同士、またはモデルフレームと重なってはいけません。**
 
-Rules:
+ルール：
 
-1. **Title and body must not collide.** If a title wraps to 2 lines, the body `y` must account for the title's actual height, not the planned height. Safe formula: `body_y = title_y + title_height + 0.5cm`
-2. **Fixed-height text boxes are dangerous.** If text content is longer than expected, it will overflow invisibly. Use generous heights: title `3-4cm`, body `6-8cm`, bullets `8-10cm`.
-3. **Model frame and text boxes: gap >= 1cm.** Calculate: if model is at `x=15cm`, text `x + width` must be <= `14cm`.
-4. **On Pattern C (centered model + text overlay):** text goes at slide top (`y=0.5-2cm`) or bottom (`y=14-17cm`), NOT in the vertical middle where the model lives (`y=3-13cm`).
-5. **After building each slide, verify coordinates:**
+1. **タイトルと本文は衝突してはいけません。** タイトルが2行に折り返す場合、本文の `y` は計画上の高さではなく、タイトルの実際の高さを考慮する必要があります。安全な計算式：`body_y = title_y + title_height + 0.5cm`
+2. **固定高さのテキストボックスは危険です。** 想定より長いテキストが入ると、見えないところでオーバーフローします。余裕のある高さを使ってください：タイトル `3-4cm`、本文 `6-8cm`、箇条書き `8-10cm`。
+3. **モデルフレームとテキストボックス：ギャップは1cm以上。** 計算例：モデルが `x=15cm` にある場合、テキストの `x + width` は `14cm` 以下である必要があります。
+4. **パターン C（中央配置のモデル + テキストオーバーレイ）の場合：** テキストはスライドの上部（`y=0.5-2cm`）または下部（`y=14-17cm`）に配置し、モデルが存在する垂直方向の中央（`y=3-13cm`）には配置しないこと。
+5. **各スライドを作成した後、座標を確認してください：**
    ```bash
    officecli get deck.pptx '/slide[N]' --depth 1
    # Check: no two shapes share overlapping x/y/width/height ranges
    ```
 
-### Model Bleed Guidelines
+### モデルのはみ出しに関するガイドライン
 
-**Not every model looks good when cropped.** Bleed (Pattern E/F) works best for:
+**すべてのモデルがトリミングされて見栄えがするわけではありません。** はみ出し（パターン E/F）が最も効果的なのは：
 
-- ✅ Symmetric objects (spheres, helmets, bottles) — any crop looks intentional
-- ✅ Large flat surfaces (cars, buildings) — partial view implies scale
-- ✅ When cropping non-critical parts (background, base, stand)
+- ✅ 対称的なオブジェクト（球体、ヘルメット、ボトル）— どうトリミングしても意図的に見える
+- ✅ 大きな平面（車、建物）— 部分的に見せることでスケール感が生まれる
+- ✅ 重要でない部分（背景、土台、スタンド）をトリミングする場合
 
-Bleed does NOT work for:
+はみ出しが機能しないのは：
 
-- ❌ Character/animal models — cropping ears, tails, or limbs looks broken
-- ❌ Small detailed models — cropping loses the detail you want to show
-- ❌ When the cropped part is the most recognizable feature
+- ❌ キャラクター／動物モデル — 耳、しっぽ、脚をトリミングすると壊れて見える
+- ❌ 細部の多い小さなモデル — トリミングによって見せたいディテールが失われる
+- ❌ トリミングされる部分が最も特徴的な要素である場合
 
-**For character/animal models (like fox, duck, avocado):** keep the full model visible on all slides. Use size changes (L→M→S) for rhythm instead of bleed cropping. Use `rotx` for angle variety instead.
+**キャラクター／動物モデル（キツネ、アヒル、アボカドなど）の場合：** すべてのスライドでモデル全体を表示したままにしてください。リズムを出すにははみ出しトリミングではなくサイズ変化（L→M→S）を使ってください。角度のバリエーションには `rotx` を使ってください。
 
 ---
 
-## Camera Language
+## カメラ言語
 
-Three tools work together: **roty** (orbit), **rotx** (tilt), **width/height** (zoom).
+3つのツールが連携します：**roty**（旋回）、**rotx**（傾き）、**width/height**（ズーム）。
 
-### Shot Types (use >= 3 different per deck)
+### ショットの種類（1デッキにつき3種類以上使用）
 
-| Shot                     | Size                  | rotx       | When                        |
-| ------------------------ | --------------------- | ---------- | --------------------------- |
-| **Establishing**         | L (18-24cm)           | 0-5        | Title, intro, closing       |
-| **Three-quarter beauty** | L (16-20cm)           | 5-10       | Hero, first impression      |
-| **Close-up**             | XL (28-36cm), cropped | 0-10       | Feature highlight, detail   |
-| **Bird's eye**           | M (13-17cm)           | 25-40      | Structure, overview         |
-| **Low angle**            | L (16-20cm)           | -15 to -25 | Power, drama                |
-| **Side profile**         | M (13-16cm)           | 0          | Form factor, silhouette     |
-| **Over-the-shoulder**    | S (5-10cm)            | 10-15      | Data-heavy, model as accent |
+| ショット                     | サイズ                  | rotx       | 使用場面                        |
+| ------------------------ | --------------------- | ---------- | ---------------------------- |
+| **確立ショット**         | L (18-24cm)           | 0-5        | タイトル、導入、クロージング       |
+| **スリークォーターの美しいショット** | L (16-20cm)           | 5-10       | ヒーロー、第一印象               |
+| **クローズアップ**             | XL (28-36cm)、トリミング | 0-10       | 特徴のハイライト、ディテール   |
+| **俯瞰**           | M (13-17cm)           | 25-40      | 構造、概観                |
+| **あおり**            | L (16-20cm)           | -15 to -25 | 力強さ、ドラマ性                 |
+| **サイドプロファイル**         | M (13-16cm)           | 0          | フォルム、シルエット     |
+| **オーバー・ザ・ショルダー**    | S (5-10cm)            | 10-15      | データ量の多い場面、アクセントとしてのモデル |
 
-### Content-Driven Camera
+### コンテンツ主導のカメラワーク
 
-Match the shot to what the slide talks about:
+スライドが語っている内容にショットを合わせる：
 
-- "Front design" → Close-up, `roty=0`, XL cropped
-- "Side profile" → Side, `roty=90`, M
-- "Internal structure" → Bird's eye, `roty=30, rotx=35`, M
-- "Power/authority" → Low angle, `roty=20, rotx=-20`, L
-- "Data & specs" → Over-the-shoulder, `roty=60`, S in corner
+- 「正面デザイン」→ クローズアップ、`roty=0`、XL トリミング
+- 「サイドプロファイル」→ サイド、`roty=90`、M
+- 「内部構造」→ 俯瞰、`roty=30, rotx=35`、M
+- 「力強さ／権威」→ あおり、`roty=20, rotx=-20`、L
+- 「データと仕様」→ オーバー・ザ・ショルダー、`roty=60`、隅に S
 
-### Rotation Rules
+### 回転ルール
 
-1. Adjacent roty delta: 30-90° (< 30 = jitter, > 90 = disorienting)
-2. Overall roty direction must be consistent (no back-and-forth)
-3. rotx range: -25 to +40. Adjacent rotx delta <= 20
-4. Total arc across deck: 180-360° (show the model from all sides)
+1. 隣接するスライド間の roty の差：30〜90°（30未満はジッター、90超は方向感覚を失わせる）
+2. roty 全体の回転方向は一貫させる（行ったり来たりしない）
+3. rotx の範囲：-25 〜 +40。隣接するスライド間の rotx の差は 20 以下
+4. デッキ全体の合計弧度：180〜360°（あらゆる角度からモデルを見せる）
 
-### Example Shot Plan
+### ショットプラン例
 
-| Slide | Shot                 | roty | rotx | Size     | Pattern |
+| スライド | ショット                 | roty | rotx | サイズ     | パターン |
 | ----- | -------------------- | ---- | ---- | -------- | ------- |
-| 1     | Three-quarter beauty | 30   | 8    | L 20×17  | C       |
-| 2     | Close-up             | 0    | 5    | XL 30×24 | E       |
-| 3     | Side profile         | 80   | 0    | M 15×14  | A       |
-| 4     | Bird's eye           | 120  | 35   | M 14×13  | B       |
-| 5     | Low angle            | 170  | -20  | L 20×18  | F       |
-| 6     | Over-the-shoulder    | 220  | 10   | S 8×7    | D       |
-| 7     | Establishing         | 320  | 5    | L 20×17  | C       |
+| 1     | スリークォーターの美しいショット | 30   | 8    | L 20×17  | C       |
+| 2     | クローズアップ             | 0    | 5    | XL 30×24 | E       |
+| 3     | サイドプロファイル         | 80   | 0    | M 15×14  | A       |
+| 4     | 俯瞰            | 120  | 35   | M 14×13  | B       |
+| 5     | あおり            | 170  | -20  | L 20×18  | F       |
+| 6     | オーバー・ザ・ショルダー    | 220  | 10   | S 8×7    | D       |
+| 7     | 確立ショット         | 320  | 5    | L 20×17  | C       |
 
 ---
 
-## Workflow Integration with morph-ppt
+## morph-ppt とのワークフロー統合
 
-### Phase 2 additions (Planning)
+### フェーズ2の追加事項（企画）
 
-In `brief.md`, add a **Model Choreography Table**:
+`brief.md` に**モデル演出テーブル**を追加します：
 
-| Slide | Pattern | Size Tier | Model x,y,w,h | roty | rotx |
+| スライド | パターン | サイズ階層 | モデル x,y,w,h | roty | rotx |
 | ----- | ------- | --------- | ------------- | ---- | ---- |
 | 1     | C       | L         | 7,0.5,20,17   | 30   | 8    |
 | 2     | E       | XL        | -2,-2,38,24   | 0    | 5    |
 | ...   | ...     | ...       | ...           | ...  | ...  |
 
-Verify the area ratio rule (>= 1.5x between adjacent rows) before proceeding to build.
+ビルドに進む前に、面積比ルール（隣接する行の間で 1.5倍以上）を検証してください。
 
-### Phase 3 additions (Build)
+### フェーズ3の追加事項（ビルド）
 
-Since models cannot be cloned, the build script differs from standard morph-ppt:
+モデルはクローンできないため、ビルドスクリプトは標準の morph-ppt とは異なります：
 
-1. Create all slides first (with background + morph transition)
-2. Add scene actors (`!!scene-*`) on slide 1, then clone slides for morph continuity
-3. Add 3D model fresh on EACH slide (same name, different roty/position)
-4. Add content shapes per slide, ghost previous content
+1. まず全スライドを作成する（背景 + morph トランジション付き）
+2. スライド1にシーンアクター（`!!scene-*`）を追加し、その後 morph の連続性のためにスライドをクローンする
+3. 各スライドに毎回新規で3Dモデルを追加する（同じ name、異なる roty／位置）
+4. スライドごとにコンテンツシェイプを追加し、以前のコンテンツをゴースト表示にする
 
 ```python
 model_positions = [
@@ -540,28 +540,28 @@ for pos in model_positions:
         "--prop", f"roty={pos['roty']}")
 ```
 
-### Phase 4 additions (Verification)
+### フェーズ4の追加事項（検証）
 
-After standard morph verification, additionally check:
+標準の morph 検証の後、追加で以下を確認してください：
 
-- Each slide has exactly one `model3d` element
-- All models share the same `name` prop
-- Adjacent slides have model area ratio >= 1.5x or <= 0.67x
-- No two consecutive slides use the same layout pattern
+- 各スライドに `model3d` 要素がちょうど1つあること
+- すべてのモデルが同じ `name` プロパティを共有していること
+- 隣接するスライドのモデル面積比が 1.5倍以上、または 0.67倍以下であること
+- 連続する2枚のスライドで同じレイアウトパターンを使っていないこと
 
 ---
 
-## File Placement Rule
+## ファイル配置ルール
 
-All files must be in the same working directory.
+すべてのファイルは同一の作業ディレクトリに置く必要があります。
 
-**Deliverables (exactly 4 files, no more):**
+**成果物（ちょうど4ファイル、それ以上は不可）：**
 
-- `.glb` model file (the 3D model used in the deck)
-- Output `.pptx`
-- Build script (re-runnable)
+- `.glb` モデルファイル（デッキで使用される3Dモデル）
+- 出力先の `.pptx`
+- ビルドスクリプト（再実行可能）
 - `brief.md`
 
-**Do NOT create additional files** such as outline.md, quality-report.md, test-report.md, etc. All planning goes in `brief.md`, all verification output goes to stdout. Extra files confuse users.
+**outline.md、quality-report.md、test-report.md などの追加ファイルは作成しないでください。** 企画はすべて `brief.md` に記載し、検証出力はすべて標準出力に出してください。余分なファイルはユーザーを混乱させます。
 
-Do not scatter model files across unrelated paths.
+無関係なパスにモデルファイルを散らばらせないこと。
