@@ -1,112 +1,112 @@
 ---
 name: officecli-financial-model
-description: "Use this skill when the user wants to build a financial model — 3-statement model, DCF valuation, LBO, SaaS unit economics, sensitivity / scenario analysis, debt schedule, or fundraising projections — in Excel. Trigger on: 'financial model', '3-statement model', 'P&L + BS + CF', 'DCF', 'WACC', 'NPV', 'terminal value', 'LBO', 'debt schedule', 'cash sweep', 'MOIC', 'IRR / XIRR', 'sensitivity table', 'scenario analysis', 'ARR model', 'unit economics', 'CAC / LTV', 'cap table forecast'. Output is a single formula-driven .xlsx. This skill is a scene layer on top of officecli-xlsx — it inherits every xlsx v2 rule (4-color code, visual floor, number formats, cache-drift, Known Issues, Delivery Gate minimum cycle). DO NOT invoke for a simple budget tracker, CSV dump, or operational KPI sheet — route those to officecli-xlsx base."
+description: "ユーザーが Excel で財務モデル — 3ステートメントモデル、DCF バリュエーション、LBO、SaaS ユニットエコノミクス、感応度/シナリオ分析、デットスケジュール、資金調達プロジェクションなど — を構築したい場合にこのスキルを使用する。トリガーとなる語句: 'financial model', '3-statement model', 'P&L + BS + CF', 'DCF', 'WACC', 'NPV', 'terminal value', 'LBO', 'debt schedule', 'cash sweep', 'MOIC', 'IRR / XIRR', 'sensitivity table', 'scenario analysis', 'ARR model', 'unit economics', 'CAC / LTV', 'cap table forecast'。出力は単一の数式駆動の .xlsx。このスキルは officecli-xlsx の上に乗るシーンレイヤーであり、xlsx v2 のすべてのルール（4色コード、ビジュアルフロア、数値フォーマット、キャッシュドリフト、Known Issues、Delivery Gate の最小サイクル）を継承する。単純な予算トラッカー、CSV ダンプ、運用 KPI シートには invoke しないこと — それらは officecli-xlsx ベースにルーティングする。"
 ---
 
-# OfficeCLI Financial-Model Skill
+# OfficeCLI Financial-Model スキル
 
-**This skill is a scene layer on top of `officecli-xlsx`.** Every xlsx hard rule — shell quoting, incremental execution, Help-First Rule, visual delivery floor, CFO 4-color code (blue input / black formula / green cross-sheet / yellow-fill assumption), number-format standards (years as text, zero as `-`, `%` one decimal, negatives in parens), assumption-cell discipline, CSV batch import, chart data-feed forms (a/b/c), the 5-gate Delivery cycle, cache-drift guidance, Known Issues (the cross-sheet `!` trap, batch + resident for formulas, renderer caveats) — is **inherited, not re-taught**. This file adds only what a **financial model** requires on top: three-zone architecture, 3 model-type recipes (3-statement / DCF / LBO), sensitivity + scenario protocols, financial-function patterns, circular-reference discipline, and model-specific Delivery Gates 4–6.
+**このスキルは `officecli-xlsx` の上に乗るシーンレイヤーです。** xlsx のハードルール — シェルクォート、逐次実行、Help-First Rule、ビジュアル納品フロア、CFO 4色コード（青＝入力、黒＝数式、緑＝シート横断、黄色塗り＝前提条件）、数値フォーマット標準（年は文字列、ゼロは `-`、`%` は小数点1桁、負数は括弧表記）、前提セルの規律、CSV 一括インポート、チャートのデータフィード形式（a/b/c）、5ゲートの Delivery サイクル、キャッシュドリフトのガイダンス、Known Issues（シート横断の `!` トラップ、数式に対する batch + resident、レンダラーの注意点）— はすべて**継承済みであり、ここでは再教育しない**。このファイルが追加するのは、**財務モデル**が xlsx ベースの上に必要とするものだけ: 三層アーキテクチャ、3つのモデルタイプのレシピ（3ステートメント / DCF / LBO）、感応度＋シナリオのプロトコル、財務関数パターン、循環参照の規律、モデル固有の Delivery Gate 4〜6。
 
-When the xlsx base rules cover it, the text here says `→ see xlsx v2 §X`. Read `skills/officecli-xlsx/SKILL.md` first if you have not.
+xlsx ベースルールで網羅されている箇所は、本文中で `→ see xlsx v2 §X` と記す。未読であれば先に `skills/officecli-xlsx/SKILL.md` を読むこと。
 
-## Setup
+## セットアップ
 
-If `officecli` is missing:
+`officecli` が未インストールの場合:
 
 - **macOS / Linux**: `curl -fsSL https://d.officecli.ai/install.sh | bash`
 - **Windows (PowerShell)**: `irm https://d.officecli.ai/install.ps1 | iex`
 
-Verify with `officecli --version` (open a new terminal if PATH hasn't picked up). If install fails, download a binary from https://github.com/iOfficeAI/OfficeCLI/releases.
+`officecli --version` で確認する（PATH が反映されていなければ新しいターミナルを開く）。インストールが失敗する場合は https://github.com/iOfficeAI/OfficeCLI/releases からバイナリをダウンロードする。
 
 ## Help-First Rule
 
-This skill teaches what a financial model requires, not every CLI flag. When a prop name / alias / enum is uncertain, consult help BEFORE guessing: `officecli help xlsx [element] [--json]`. Help is authoritative for the installed version — when this skill and help disagree, **help wins**. Every `--prop X=` below was verified against `officecli help xlsx <element>`.
+このスキルが教えるのは財務モデルに必要な事項であり、全 CLI フラグではない。プロパティ名/エイリアス/enum が不確かな場合は、推測する**前に**ヘルプを確認する: `officecli help xlsx [element] [--json]`。ヘルプはインストール済みバージョンに対して権威があり、本スキルとヘルプが食い違う場合は**ヘルプが勝つ**。以下の各 `--prop X=` はすべて `officecli help xlsx <element>` で検証済み。
 
-## Mental Model & Inheritance
+## メンタルモデルと継承
 
-**Inherits xlsx v2.** Read `skills/officecli-xlsx/SKILL.md` first. This skill assumes you know `create` / `open` / `close`, `set` values/formulas, `batch` heredocs for cross-sheet formulas, `/SheetName/A1` paths, named ranges, the 5-gate Delivery cycle, the cross-sheet `!` trap, and that **cross-sheet formulas go non-resident (single batch OR individual `set`), never batch-while-resident**.
+**xlsx v2 を継承する。** 先に `skills/officecli-xlsx/SKILL.md` を読むこと。このスキルは、`create` / `open` / `close`、値/数式の `set`、シート横断数式のための `batch` ヒアドキュメント、`/SheetName/A1` パス、名前付き範囲、5ゲートの Delivery サイクル、シート横断の `!` トラップ、そして**シート横断数式は non-resident（単一 batch または個別 `set`）で行い、resident のまま batch しては絶対にいけない**ことを既知の前提とする。
 
-## Shell & Execution Discipline
+## シェルと実行の規律
 
-Shell quoting, incremental execution, `$FILE` convention → see xlsx v2 §Shell & Execution Discipline. Same rules: quote every `[N]` path, single-quote any prop containing `$` (every number format here — `$#,##0;($#,##0);"-"` — needs single quotes), no hand-written `\$`/`\t`/`\n`, one command at a time. Examples below use `$FILE` (`FILE="model.xlsx"`).
+シェルクォート、逐次実行、`$FILE` 慣習 → see xlsx v2 §Shell & Execution Discipline。ルールは同じ: すべての `[N]` パスをクォートする、`$` を含むプロパティはシングルクォートで囲む（本書に登場するすべての数値フォーマット `$#,##0;($#,##0);"-"` はシングルクォートが必要）、手書きの `\$`/`\t`/`\n` は禁止、コマンドは一度に一つ。以降の例では `$FILE`（`FILE="model.xlsx"`）を使用する。
 
-## Core Principles (identity)
+## 核となる原則（アイデンティティ）
 
-A financial model is an xlsx with a **decision-grade, formula-driven layer**: every output traces an unbroken chain to blue-font assumptions, every statement balances every period, every valuation is re-auditable. Eight deltas on top of a general xlsx:
+財務モデルとは、**意思決定グレードの数式駆動レイヤー**を備えた xlsx である: すべての出力は青字の前提条件まで途切れない連鎖でたどれ、すべてのステートメントは各期間でバランスし、すべてのバリュエーションは再監査可能である。一般的な xlsx に対する8つの差分:
 
-1. **Three-zone architecture mandatory:** Inputs → Calc → Outputs. Collapsing zones → unauditable.
-2. **Assumptions live in cells, never inside formulas.** `=B5*(1+Assumptions!GrowthRate)`, never `=B5*1.05`.
-3. **Statements balance every period.** `Assets − Liab − Equity = 0`, `CF.EndingCash = BS.Cash`. Gate 4 fails on `IMBALANCED`.
-4. **Hardcodes audited.** Calc sheets carry zero hardcoded numbers; Gate 6 counts.
-5. **Sensitivity / scenario is first-class.** 2-axis grid, dropdown `INDEX/MATCH` switch, or Base/Upside/Downside cols. Excel Data Tables not reliably supported — manual grids only.
-6. **Cached values on valuation cells load-bearing.** A valuation cell that ships with no cached result (or the `#OCLI_NOTEVAL!` sentinel) sends a blank/wrong number to non-recalculating readers. The evaluator now computes NPV / XNPV / IRR / XIRR; verify the cached value with a readback. Gate 5 spot-checks.
-7. **Circularity is a design choice.** Legitimate rings (interest ↔ cash, revolver plug ↔ ending cash) use `calc.iterate=true`. Accidental circularity is broken algebra — never papered with `iterate`.
-8. **Named ranges for ≥ 3-use assumptions.** `WACC`, `TaxRate`, `TerminalGrowth`, `ExitMultiple`, `ChurnRate`. Declared-unused names are dead decoration — Gate 6 flags.
+1. **三層アーキテクチャは必須:** Inputs → Calc → Outputs。ゾーンを崩すと監査不能になる。
+2. **前提条件はセルに置く。数式の中には決して埋め込まない。** `=B5*(1+Assumptions!GrowthRate)` であり、`=B5*1.05` ではない。
+3. **ステートメントは各期間でバランスする。** `Assets − Liab − Equity = 0`、`CF.EndingCash = BS.Cash`。Gate 4 は `IMBALANCED` で失敗する。
+4. **ハードコードは監査対象。** Calc シートのハードコード数値はゼロ、Gate 6 がカウントする。
+5. **感応度/シナリオは一級市民。** 2軸グリッド、ドロップダウンの `INDEX/MATCH` スイッチ、または Base/Upside/Downside の列。Excel の Data Tables は確実にはサポートされない — 手動グリッドのみ。
+6. **バリュエーションセルのキャッシュ値は納品を左右する。** キャッシュ済み結果がない（または `#OCLI_NOTEVAL!` センチネル付きの）バリュエーションセルは、再計算しない読者に空欄/誤った数値を送る。エバリュエーターは現在 NPV / XNPV / IRR / XIRR を計算する。読み戻しでキャッシュ値を検証すること。Gate 5 が抜き取り検査する。
+7. **循環性は設計上の選択である。** 正当なリング（利息⇄現金、リボルバープラグ⇄期末現金）には `calc.iterate=true` を使う。意図しない循環性は壊れた代数であり、`iterate` で覆い隠してはならない。
+8. **3回以上使用する前提条件には名前付き範囲を使う。** `WACC`、`TaxRate`、`TerminalGrowth`、`ExitMultiple`、`ChurnRate`。宣言済みで未使用の名前は無用の飾りであり、Gate 6 が検出する。
 
-### Reverse handoff — when to go BACK to xlsx base
+### 逆ハンドオフ — いつ xlsx ベースに戻るか
 
-Stay in **xlsx base** for: budget trackers, CSV-to-report dumps, operational KPI sheets, simple templates, cap tables without forecast logic. Use **this skill** only when the ask mentions: 3-statement / DCF / WACC / NPV / TV / LBO / debt schedule / MOIC / IRR / unit economics / ARR roll-forward / sensitivity grid / scenario switch / pro forma.
+**xlsx ベース**にとどまるべきケース: 予算トラッカー、CSV からレポートへのダンプ、運用 KPI シート、単純なテンプレート、フォーキャストロジックのないキャップテーブル。**このスキル**を使うのは、依頼が 3ステートメント / DCF / WACC / NPV / TV / LBO / デットスケジュール / MOIC / IRR / ユニットエコノミクス / ARR ロールフォワード / 感応度グリッド / シナリオスイッチ / プロフォーマに言及している場合のみ。
 
-## Three-zone architecture (hard rule)
+## 三層アーキテクチャ（ハードルール）
 
-Every model in this skill builds on three zones. **Name them, tab-color them, and enforce them with executable audits.** Breaking the zone rule is the single most common cause of an unauditable model.
+本スキルのすべてのモデルは三層の上に構築する。**名前を付け、タブに色を付け、実行可能な監査で強制する。** ゾーンルールを破ることが、監査不能なモデルになる最も一般的な原因である。
 
-| Zone | Sheet names (convention) | Tab color | Content | Hardcodes | Formulas |
+| ゾーン | シート名（慣習） | タブ色 | 内容 | ハードコード | 数式 |
 |---|---|---|---|---|---|
-| **Inputs** | `Assumptions`, `Inputs`, `Drivers` | Yellow `FFC000` | Raw drivers: growth rates, margins, tax, WACC, FTE, pricing, working-capital days | Blue `0000FF` on every cell | Allowed only for derived assumptions (e.g. `=MonthlyARPU*12`) |
-| **Calc** | `P&L`, `Balance Sheet`, `Cash Flow`, `DCF`, `Debt`, `ARR` | Blue `4472C4` | All derivations and statements | **Zero** (enforced by Gate 6) | Black `000000` for same-sheet, green `008000` for cross-sheet |
-| **Outputs** | `Summary`, `Dashboard`, `Sensitivity`, `Returns` | Green `70AD47` | KPIs, sensitivity grids, charts, returns waterfall | Only for labels (non-numeric); Gate 6 counts numeric hardcodes → 0 | Black / green per above |
+| **Inputs** | `Assumptions`、`Inputs`、`Drivers` | 黄色 `FFC000` | 生のドライバー: 成長率、利益率、税率、WACC、FTE、価格、運転資本日数 | すべてのセルに青 `0000FF` | 派生前提条件（例: `=MonthlyARPU*12`）にのみ許可 |
+| **Calc** | `P&L`、`Balance Sheet`、`Cash Flow`、`DCF`、`Debt`、`ARR` | 青 `4472C4` | すべての導出とステートメント | **ゼロ**（Gate 6 が強制） | 同一シート内は黒 `000000`、シート横断は緑 `008000` |
+| **Outputs** | `Summary`、`Dashboard`、`Sensitivity`、`Returns` | 緑 `70AD47` | KPI、感応度グリッド、チャート、リターンウォーターフォール | ラベルのみ（数値以外）；Gate 6 が数値ハードコードをカウント → 0 | 上記に準じ黒/緑 |
 
-**Build order is cross-zone-aware.** Assumptions first, then Calc bottom-up on the dependency chain (`IS → BS → CF` for 3-statement; `FCF → WACC → NPV` for DCF), then Outputs last. Building Outputs first caches `0` everywhere and downstream inherits zeros.
+**ビルド順序はゾーン横断を意識する。** 前提条件を最初に、次に依存関係の連鎖（3ステートメントなら `IS → BS → CF`、DCF なら `FCF → WACC → NPV`）に沿って Calc をボトムアップに、最後に Outputs。Outputs を先に作ると至る所に `0` がキャッシュされ、下流もゼロを継承してしまう。
 
-**Executable zone audit** (run before Gate 4):
+**実行可能なゾーン監査**（Gate 4 の前に実行）:
 
 ```bash
-# Calc zone: zero numeric hardcodes allowed. `cell:not(:has(formula))` selects the literal (non-formula) cells; `cell:has(formula)` selects the formula cells.
+# Calc ゾーン: 数値ハードコードは0でなければならない。`cell:not(:has(formula))` はリテラル（非数式）セルを、`cell:has(formula)` は数式セルを選択する。
 HARDCODE=$(officecli query "$FILE" 'cell[type=Number]' --json | jq '[.data.results[] | select(.format.formula == null) | select(.path | test("/(P&L|Balance Sheet|Cash Flow|DCF|Debt|ARR)/"))] | length')
 [ "$HARDCODE" -eq 0 ] && echo "Zone audit OK" || { echo "REJECT: $HARDCODE hardcoded numeric cells on Calc sheets — move to Assumptions"; exit 1; }
-# Assumptions zone: should be non-zero.
+# Assumptions ゾーン: 非ゼロであるべき。
 INPUTS=$(officecli query "$FILE" '/Assumptions/cell[type=Number]' --json | jq '[.data.results[] | select(.format.formula == null)] | length')
 [ "$INPUTS" -ge 5 ] && echo "Assumptions has $INPUTS hardcoded drivers" || echo "WARN: Assumptions has only $INPUTS inputs"
 ```
 
-## Print delivery (board / IC / LP)
+## 印刷用納品物（取締役会 / IC / LP）
 
-When the ask contains "print" / "一页" / "董事会" / "投资人" / "IC memo" / "LP update", the print pipeline must emit **only** the Outputs zone. Two artefacts:
+依頼に「print」/「一页」/「董事会」/「投资人」/「IC memo」/「LP update」が含まれる場合、印刷パイプラインは Outputs ゾーン**のみ**を出力しなければならない。2つの成果物:
 
 ```bash
-# 1. Print_Area scoped to the Outputs sheet (Summary or Dashboard).
+# 1. Print_Area を Outputs シート (Summary か Dashboard) にスコープする。
 officecli add "$FILE" / --type namedrange --prop name=_xlnm.Print_Area --prop scope=Summary --prop 'refersTo=Summary!$A$1:$H$40'
-# 2. Hide every non-Outputs sheet — Print_Area scope alone does NOT stop the print pipeline from emitting every visible sheet.
+# 2. Outputs 以外のシートをすべて非表示にする — Print_Area のスコープだけでは、印刷パイプラインが可視シートをすべて出力するのを止められない。
 for S in Assumptions 'P&L' 'Balance Sheet' 'Cash Flow' DCF WACC Debt FCF 'S&U' Exit Returns; do
   officecli raw-set "$FILE" /workbook --xpath "//x:sheet[@name='$S']" --action setattr --xml "state=hidden" || true
 done
-# 3. fit-to-page landscape on Outputs sheet.
+# 3. Outputs シートに fit-to-page の横向きを設定する。
 officecli raw-set "$FILE" /Summary --xpath "//x:worksheet" --action prepend --xml '<sheetPr xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><pageSetUpPr fitToPage="1"/></sheetPr>'
 ```
 
-Delete any `Print_Area` set on Calc sheets — conflicting scopes emit multi-page output with Assumptions / statement sheets leaking.
+Calc シートに設定された `Print_Area` は削除すること — スコープが競合すると、Assumptions / ステートメントシートが漏れ出す複数ページ出力になる。
 
-## Build-order & cache-drift rule (critical for 3-statement)
+## ビルド順序とキャッシュドリフトのルール（3ステートメントで重大）
 
-Three facts cause silent wrong numbers: (1) new formulas ship without cached values — Excel recomputes on open, HTML preview / older viewers do not; (2) downstream written in the same sequence as upstream caches `0` from upstream's pre-cache state; (3) cross-sheet `batch` while resident is open deadlocks at 3–5 ops.
+3つの事実がサイレントな誤数値を引き起こす: (1) 新しい数式がキャッシュ値なしで出荷される — Excel は開いたときに再計算するが、HTML プレビュー / 古いビューアはしない; (2) 上流と同じシーケンスで書かれた下流は、上流のキャッシュ前の状態から `0` をキャッシュする; (3) resident が開いた状態でのシート横断 `batch` は 3〜5 操作でデッドロックする。
 
-**Discipline (every recipe):**
-- Build order follows the data chain: `P&L → BS → CF` (3-statement); `FCF → WACC → NPV → Sensitivity` (DCF); `S&U → Debt → P&L → CF → Returns` (LBO).
-- After the cross-sheet chain, **cache-refresh pass:** re-issue `set` on every summary / valuation / balance-check cell, non-resident.
-- Spot-check: `officecli get "$FILE" /Summary/B2 --json | jq '.data.results[0].format.cachedValue'` returns a plausible non-null value. `null` means Excel will compute on open (OK for delivery). If a cell shows the `#OCLI_NOTEVAL!` sentinel: close residents, re-set; still unevaluated → cache-fallback (§Financial function patterns).
+**規律（すべてのレシピ共通）:**
+- ビルド順序はデータ連鎖に従う: `P&L → BS → CF`（3ステートメント）；`FCF → WACC → NPV → Sensitivity`（DCF）；`S&U → Debt → P&L → CF → Returns`（LBO）。
+- シート横断連鎖の後、**キャッシュ再更新パス:** すべてのサマリー / バリュエーション / バランスチェックセルに対して non-resident で `set` を再発行する。
+- 抜き取り確認: `officecli get "$FILE" /Summary/B2 --json | jq '.data.results[0].format.cachedValue'` が妥当な非 null 値を返すこと。`null` は Excel が開いたときに計算することを意味する（納品としては OK）。セルが `#OCLI_NOTEVAL!` センチネルを示す場合: resident を閉じて再 set、それでも未評価なら cache-fallback（§財務関数パターン）。
 
-## Recipes — three model types
+## レシピ — 3つのモデルタイプ
 
-Each recipe below is **runnable skeleton, not finance theory**. Substitute numbers; don't restructure. All recipes assume `FILE="model.xlsx"` is set and you have run `officecli create "$FILE"` + `officecli open "$FILE"`. Close with `officecli close "$FILE"` at the end.
+以下の各レシピは**実行可能な骨格であり、ファイナンス理論ではない**。数値は差し替えて構わないが、構造は変更しないこと。すべてのレシピは `FILE="model.xlsx"` が設定済みで、`officecli create "$FILE"` + `officecli open "$FILE"` を実行済みであることを前提とする。最後に `officecli close "$FILE"` で締める。
 
-### Recipe A — 3-statement model (P&L + BS + CF)
+### レシピ A — 3ステートメントモデル（P&L + BS + CF）
 
-**What this recipe produces.** 4 sheets: `Assumptions`, `P&L`, `Balance Sheet`, `Cash Flow`, plus `Summary`. Year columns 2024A · 2025E · 2026E · 2027E. Balance-check row on BS; cash-reconciliation row on CF. Every statement row = formula → Assumptions.
+**このレシピが生成するもの。** 4シート: `Assumptions`、`P&L`、`Balance Sheet`、`Cash Flow`、加えて `Summary`。年次列は 2024A・2025E・2026E・2027E。BS にバランスチェック行、CF にキャッシュ照合行。すべてのステートメント行 = Assumptions への数式。
 
-**Build order (MANDATORY).** `Assumptions → P&L → Balance Sheet → Cash Flow → Summary`. Do NOT build BS before P&L — `RetainedEarnings` depends on `NI`. Do NOT build CF before BS — `CF.OpeningCash = prior period CF.EndingCash` self-chain requires BS cash anchored for Y1. The skill's Gate 4 balance check fails silently if order is wrong.
+**ビルド順序（必須）。** `Assumptions → P&L → Balance Sheet → Cash Flow → Summary`。P&L より前に BS を作らないこと — `RetainedEarnings` は `NI` に依存する。BS より前に CF を作らないこと — `CF.OpeningCash = 前期の CF.EndingCash` の自己連鎖には、Y1 用に固定された BS の現金が必要。順序を誤ると、本スキルの Gate 4 バランスチェックはサイレントに失敗する。
 
-**Step 1 — sheets + tab colors + freeze panes.**
+**ステップ1 — シート＋タブ色＋ウィンドウ枠の固定。**
 
 ```bash
 officecli add "$FILE" / --type sheet --prop name=Assumptions --prop tabColor=FFC000
@@ -120,11 +120,11 @@ officecli set "$FILE" "/Balance Sheet" --prop freeze=B3
 officecli set "$FILE" "/Cash Flow" --prop freeze=B3
 ```
 
-**Step 2 — assumptions (blue, yellow-fill on key drivers).** Year headers row 2, labels down col A, blue numeric inputs on B:E. Drivers: `RevenueGrowth`, `GrossMargin`, `OpExRatio`, `TaxRate`, `DaysReceivable/Inventory/Payable`, `CapExRatio`, `DepreciationYears`. `font.color=0000FF` on B:E. Yellow-fill (`fill=FFFF00`) the 3–5 scenario-switched drivers.
+**ステップ2 — 前提条件（青、主要ドライバーは黄色塗り）。** 年ヘッダーは2行目、ラベルは A 列を下に、青い数値入力は B:E。ドライバー: `RevenueGrowth`、`GrossMargin`、`OpExRatio`、`TaxRate`、`DaysReceivable/Inventory/Payable`、`CapExRatio`、`DepreciationYears`。B:E に `font.color=0000FF`。シナリオ切替対象の3〜5個のドライバーには黄色塗り（`fill=FFFF00`）。
 
-**Declare named ranges for ≥3-use drivers and reference them** (`StartingARR`, `TaxRate`, `OpeningCash`, `GrowthRate`, `GrossMargin`). Formulas: `=StartingARR` not `=Assumptions!B4`; `=EBT*TaxRate` not `=EBT*Assumptions!B8`. Declared-unused names = dead decoration, Gate 6 rejects.
+**3回以上使用するドライバーには名前付き範囲を宣言し、それを参照する**（`StartingARR`、`TaxRate`、`OpeningCash`、`GrowthRate`、`GrossMargin`）。数式は `=Assumptions!B4` ではなく `=StartingARR`、`=EBT*Assumptions!B8` ではなく `=EBT*TaxRate`。宣言だけで未使用の名前は無用の飾りであり、Gate 6 で却下される。
 
-**Step 3 — P&L rows (all formulas).** Rows: `Revenue` / `COGS` / `Gross Profit` / `OpEx` / `EBITDA` / `D&A` / `EBIT` / `Interest` / `EBT` / `Tax` / `Net Income`. Every row = formula referencing `Assumptions` or prior-row cells. Example revenue-side block — **substitute your row numbers**. Row-map for this example: `B3=Revenue, B4=COGS, B5=Gross Profit, B7=OpEx, B9=EBITDA, B10=EBIT, B15=Net Income`. Submit as single non-resident batch:
+**ステップ3 — P&L 行（すべて数式）。** 行: `Revenue` / `COGS` / `Gross Profit` / `OpEx` / `EBITDA` / `D&A` / `EBIT` / `Interest` / `EBT` / `Tax` / `Net Income`。すべての行が `Assumptions` または直前行のセルを参照する数式。以下は収益側ブロックの例 — **自分の行番号に差し替えること**。この例の行マップ: `B3=Revenue, B4=COGS, B5=Gross Profit, B7=OpEx, B9=EBITDA, B10=EBIT, B15=Net Income`。単一の non-resident batch として投入する:
 
 ```bash
 cat <<'EOF' | officecli batch "$FILE"
@@ -139,15 +139,15 @@ cat <<'EOF' | officecli batch "$FILE"
 EOF
 ```
 
-Assumptions refs (`B5`, `C6`, `B7`) are also placeholder rows — better: **define named ranges** for each driver (Step 2) so formulas read `=StartingRevenue*(1+RevenueGrowth_Y2)` regardless of row layout. Repeat for `OpEx` / `D&A` / `Interest` / `Tax` / `NI`. `font.color=008000` on every cross-sheet-reference cell; same-sheet cells default `000000`. `numFmt='$#,##0;($#,##0);"-"'` on all $ rows.
+Assumptions 参照（`B5`、`C6`、`B7`）もプレースホルダー行に過ぎない — より良いのは、**各ドライバーに名前付き範囲を定義する**こと（ステップ2）で、行レイアウトに関わらず数式が `=StartingRevenue*(1+RevenueGrowth_Y2)` のように読めるようにする。`OpEx` / `D&A` / `Interest` / `Tax` / `NI` についても同様に繰り返す。シート横断参照のセルにはすべて `font.color=008000`、同一シートのセルはデフォルトの `000000`。すべての $ 行に `numFmt='$#,##0;($#,##0);"-"'`。
 
-**Step 4 — Balance Sheet rows (all formulas).** Assets = `Cash + AR + Inventory + Net PP&E`. Liab = `AP + Debt`. Equity = `OpeningEquity + RetainedEarnings`. Working-capital rows use Days assumptions: `AR = Revenue × DaysReceivable / 365`. `Net PP&E` rolls forward: `Beg + CapEx − Depreciation`. **`BS.Cash` is NOT an independent plug** — it MUST equal `'Cash Flow'!B<ending-cash-row>` (populated in Step 5).
+**ステップ4 — Balance Sheet 行（すべて数式）。** Assets = `Cash + AR + Inventory + Net PP&E`。Liab = `AP + Debt`。Equity = `OpeningEquity + RetainedEarnings`。運転資本の行は Days の前提条件を使用: `AR = Revenue × DaysReceivable / 365`。`Net PP&E` はロールフォワード: `Beg + CapEx − Depreciation`。**`BS.Cash` は独立したプラグではない** — 必ず `'Cash Flow'!B<期末現金の行>`（ステップ5で入力）と等しくなければならない。
 
-**Retained Earnings — live formula every period.** `BS.RE(t) = BS.RE(t-1) + 'P&L'!NI(t) − Dividends(t)`. Hardcoded RE rounds to whole dollar → BS shows ±$1 off every period (CFO reads "model doesn't balance"). For Y1 Historical RE (no prior NI), compute via BS identity as a **live formula**: `BS!RE_Y1 = TotalAssets − TotalLiabilities − PaidInCapital`. Blue-font + classic comment on the Y1 cell; Y2..Y5 stay NI-driven.
+**Retained Earnings — 毎期生きた数式で。** `BS.RE(t) = BS.RE(t-1) + 'P&L'!NI(t) − Dividends(t)`。RE をハードコードすると整数ドルに丸められ、BS が毎期 ±1ドルずれる（CFO には「モデルがバランスしていない」と読まれる）。Y1 の Historical RE（前期 NI がない）は BS の恒等式から**生きた数式**として計算する: `BS!RE_Y1 = TotalAssets − TotalLiabilities − PaidInCapital`。Y1 セルには青字＋クラシックコメント; Y2..Y5 は NI 駆動のまま。
 
-**Step 5 — Cash Flow rows (all formulas).** Operating: `NI + D&A − ΔWorkingCapital`. Investing: `−CapEx`. Financing: `ΔDebt − Dividends`. Ending Cash = `Opening + Operating + Investing + Financing`. **Year 2+ Opening Cash = prior period Ending Cash** — self-chain on the same sheet: `C17 = B19`, `D17 = C19`, `E17 = D19`. The Y1 `OpeningCash` is an Assumptions input.
+**ステップ5 — Cash Flow 行（すべて数式）。** Operating: `NI + D&A − ΔWorkingCapital`。Investing: `−CapEx`。Financing: `ΔDebt − Dividends`。Ending Cash = `Opening + Operating + Investing + Financing`。**Year 2 以降の Opening Cash = 前期の Ending Cash** — 同一シート上の自己連鎖: `C17 = B19`、`D17 = C19`、`E17 = D19`。Y1 の `OpeningCash` は Assumptions の入力。
 
-**Step 6 — Balance check + cash reconciliation rows (hard delivery checks).** Row-map for this example: `Balance Sheet: B10=Total Assets, B15=Total Liab, B17=Total Equity, B18=Balance Check`; `Cash Flow: B5=BS.Cash (cross-sheet anchor), B19=CF.Ending Cash, B21=CF-BS Cash Recon`. Substitute your layout's rows — the logic is the check, not the cell addresses.
+**ステップ6 — バランスチェック＋キャッシュ照合行（納品の必須チェック）。** この例の行マップ: `Balance Sheet: B10=Total Assets, B15=Total Liab, B17=Total Equity, B18=Balance Check`；`Cash Flow: B5=BS.Cash（シート横断アンカー）, B19=CF.Ending Cash, B21=CF-BS Cash Recon`。自分のレイアウトの行番号に差し替えること — チェックの本質はロジックであり、セルアドレスではない。
 
 ```bash
 cat <<'EOF' | officecli batch "$FILE"
@@ -158,41 +158,41 @@ cat <<'EOF' | officecli batch "$FILE"
 EOF
 ```
 
-Replicate across columns C/D/E. Apply red fill (`fill=FFC7CE`) conditionally via `type=containsText --prop text=IMBALANCED` or `text="CF !="`. Gate 4 queries these rows and refuses delivery on any `IMBALANCED`.
+C/D/E 列にも複製する。赤塗り（`fill=FFC7CE`）を `type=containsText --prop text=IMBALANCED` または `text="CF !="` で条件付き適用する。Gate 4 はこれらの行に対して query を実行し、`IMBALANCED` が1つでもあれば納品を拒否する。
 
-**Step 7 — cache refresh + format pass.** Re-set every summary cell on `Summary`, every balance-check / recon cell, and every cross-sheet reference on BS / CF (non-resident, single batch per sheet). Apply column widths (`col[A]=28`, `col[B:E]=15`), `numberformat='$#,##0;($#,##0);"-"'` on all dollar rows, header fills (`fill=1F3864`, `font.color=FFFFFF`, `bold=true`) on section-header rows (REVENUE / COGS / ASSETS / LIABILITIES). Header fill must cover A:E, not just the label cell (→ xlsx v2 §visual floor).
+**ステップ7 — キャッシュ再更新＋フォーマットパス。** `Summary` のすべてのサマリーセル、すべてのバランスチェック / 照合セル、BS / CF のすべてのシート横断参照を再 set する（non-resident、シートごとに1バッチ）。列幅を適用し（`col[A]=28`、`col[B:E]=15`）、すべてのドル行に `numberformat='$#,##0;($#,##0);"-"'`、セクションヘッダー行（REVENUE / COGS / ASSETS / LIABILITIES）にヘッダー塗り（`fill=1F3864`、`font.color=FFFFFF`、`bold=true`）を適用する。ヘッダー塗りはラベルセルだけでなく A:E 全体を覆うこと（→ xlsx v2 §visual floor）。
 
-**Step 8 — Summary / Dashboard KPIs + charts.** Minimum 4 KPIs: `Revenue 27E`, `EBITDA Margin 27E`, `Ending Cash 27E`, `Net Income CAGR` — each a formula referencing a statement cell, green font.
+**ステップ8 — Summary / Dashboard の KPI＋チャート。** 最低4つの KPI: `Revenue 27E`、`EBITDA Margin 27E`、`Ending Cash 27E`、`Net Income CAGR` — それぞれステートメントセルを参照する数式で、緑フォント。
 
-**Minimum 3 charts on any Dashboard delivered to a board / executive audience** — one chart is a draft, three is a deliverable. Pre-populate `Summary!A10:E13` with Gross Margin / EBITDA Margin / NI Margin ratio rows (formulas referencing `P&L`) before adding the margin chart.
+**取締役会/エグゼクティブ向けに納品する Dashboard にはチャートを最低3枚** — 1枚は下書き、3枚で納品物。マージン用チャートを追加する前に、`Summary!A10:E13` に Gross Margin / EBITDA Margin / NI Margin の比率行（`P&L` を参照する数式）を先に用意すること。
 
 ```bash
-# (1) Top-line trend (Revenue + EBITDA).
+# (1) トップライン推移（Revenue + EBITDA）。
 officecli add "$FILE" /Summary --type chart --prop chartType=column --prop dataRange='P&L!A2:E5' --prop title='Revenue & EBITDA' --prop width=14cm --prop height=8cm
-# (2) Margin trend (Gross / EBITDA / NI margin).
+# (2) マージン推移（Gross / EBITDA / NI margin）。
 officecli add "$FILE" /Summary --type chart --prop chartType=line --prop dataRange='Summary!A10:E13' --prop title='Margin trend' --prop width=14cm --prop height=8cm
-# (3) Cash trajectory (Ending Cash ± Runway).
+# (3) キャッシュ推移（Ending Cash ± Runway）。
 officecli add "$FILE" /Summary --type chart --prop chartType=area --prop dataRange='Cash Flow!A19:E19' --prop title='Ending cash' --prop width=14cm --prop height=8cm
 ```
 
-**Verification (run all three):**
+**検証（3つとも実行）:**
 
 ```bash
-# Balance check every period must say OK (range get → cells under .data.results[0].children[])
+# バランスチェックは全期間で OK と表示されなければならない（範囲取得 → .data.results[0].children[] の下にセルがある）
 officecli get "$FILE" "/Balance Sheet/B18:E18" --json | jq '.data.results[0].children[] | .format.cachedValue // .text'
-# Cash recon every period must say OK
+# キャッシュ照合は全期間で OK でなければならない
 officecli get "$FILE" "/Cash Flow/B21:E21" --json | jq '.data.results[0].children[] | .format.cachedValue // .text'
-# Summary KPIs are plausible numbers, not null
+# Summary の KPI は妥当な数値であり、null であってはならない
 officecli get "$FILE" "/Summary/B2:B5" --json | jq '.data.results[0].children[].format.cachedValue'
 ```
 
-### Recipe B — DCF valuation
+### レシピ B — DCF バリュエーション
 
-**What this recipe produces.** Sheets: `Assumptions`, `FCF` (10-year forecast), `WACC` (panel), `DCF` (NPV + TV + equity bridge), `Sensitivity` (2-axis grid). Output: `Implied Equity Value` + `Implied Per-Share`, with a `WACC × g` sensitivity.
+**このレシピが生成するもの。** シート: `Assumptions`、`FCF`（10年予測）、`WACC`（パネル）、`DCF`（NPV + TV + エクイティブリッジ）、`Sensitivity`（2軸グリッド）。出力: `Implied Equity Value` + `Implied Per-Share`、`WACC × g` 感応度付き。
 
-**Build order.** `Assumptions → FCF → WACC → DCF → Sensitivity`.
+**ビルド順序。** `Assumptions → FCF → WACC → DCF → Sensitivity`。
 
-**Step 1 — named ranges for key drivers.** DCF's readability depends on names. Every formula below uses `WACC`, `TaxRate`, `g` — not `$B$6`:
+**ステップ1 — 主要ドライバーの名前付き範囲。** DCF の可読性は名前次第。以下のすべての数式は `$B$6` ではなく `WACC`、`TaxRate`、`g` を使う:
 
 ```bash
 cat <<'EOF' | officecli batch "$FILE"
@@ -206,11 +206,11 @@ cat <<'EOF' | officecli batch "$FILE"
 EOF
 ```
 
-**Step 2 — FCF build (10 years).** Columns B:K = Y1..Y10. Rows: `Revenue` (from growth) / `EBIT` (revenue × margin) / `EBIT × (1 − TaxRate)` (NOPAT) / `+ D&A` / `− CapEx` / `− ΔNWC` / `= FCF`. Use Assumptions-driven ratios (`CapEx = Revenue × CapExRatio`). All cells formulas, black font, `numFmt='$#,##0;($#,##0);"-"'`.
+**ステップ2 — FCF の構築（10年）。** 列 B:K = Y1..Y10。行: `Revenue`（成長率から）/ `EBIT`（収益 × 利益率）/ `EBIT × (1 − TaxRate)`（NOPAT）/ `+ D&A` / `− CapEx` / `− ΔNWC` / `= FCF`。Assumptions 駆動の比率を使う（`CapEx = Revenue × CapExRatio`）。すべてのセルは数式、黒フォント、`numFmt='$#,##0;($#,##0);"-"'`。
 
-**Step 3 — WACC panel.** On `WACC` sheet, an 8-row panel: `Risk-free rate` / `Equity risk premium` / `Beta` / `Cost of equity` (=Rf + β×ERP) / `Pre-tax debt cost` / `After-tax debt cost` (=×(1−TaxRate)) / `Equity weight` / `Debt weight` / `WACC` (=We×Re + Wd×Rd_after_tax). Inputs blue; derived rows black.
+**ステップ3 — WACC パネル。** `WACC` シートに8行のパネル: `Risk-free rate` / `Equity risk premium` / `Beta` / `Cost of equity`（=Rf + β×ERP）/ `Pre-tax debt cost` / `After-tax debt cost`（=×(1−TaxRate)）/ `Equity weight` / `Debt weight` / `WACC`（=We×Re + Wd×Rd_after_tax）。入力は青、派生行は黒。
 
-**Step 4 — Terminal value + NPV + equity bridge.** Row-map: `DCF: B/C 3=TV, 4=PV explicit FCF, 5=PV terminal, 6=EV, 7=Net Debt, 8=Equity Value, 9=Per-Share`; `FCF: row 2 = periods (1..10), row 11 = FCF, B:K = Y1..Y10`. Substitute your rows. Notes column cells use `{"value":"text"}`, never `{"formula":"..."}` — formula-style prose yields `#NAME?` on open (see callout after Recipe C Step 5). On `DCF` sheet:
+**ステップ4 — ターミナルバリュー＋NPV＋エクイティブリッジ。** 行マップ: `DCF: B/C 3=TV, 4=PV explicit FCF, 5=PV terminal, 6=EV, 7=Net Debt, 8=Equity Value, 9=Per-Share`；`FCF: row 2 = periods (1..10), row 11 = FCF, B:K = Y1..Y10`。自分の行番号に差し替えること。ノート欄のセルは `{"value":"text"}` を使い、`{"formula":"..."}` は決して使わない — 数式風の文章は開いたときに `#NAME?` を返す（レシピ C ステップ5後のコールアウト参照）。`DCF` シートで:
 
 ```bash
 cat <<'EOF' | officecli batch "$FILE"
@@ -233,13 +233,13 @@ cat <<'EOF' | officecli batch "$FILE"
 EOF
 ```
 
-**`NPV` vs `SUMPRODUCT` — both cache correctly.** The evaluator computes `NPV(rate, cross_sheet_range)` and caches the right value (verify with a readback). `SUMPRODUCT(values/(1+rate)^periods)` is the algebraic equivalent (period row `FCF!B2:K2 = 1..10` is a one-time setup); it is shown here as an OPTIONAL audit-readability choice — the explicit discounting series is sometimes easier for a reviewer to trace, not a cache workaround. Either form is fine. For irregular dates, `XNPV(rate, values, dates)` likewise caches; the SUMPRODUCT equivalent is `SUMPRODUCT(values/(1+rate)^((dates-base_date)/365))`.
+**`NPV` と `SUMPRODUCT` — どちらも正しくキャッシュされる。** エバリュエーターは `NPV(rate, cross_sheet_range)` を計算し正しい値をキャッシュする（読み戻しで検証すること）。`SUMPRODUCT(values/(1+rate)^periods)` は代数的に等価な形（期間行 `FCF!B2:K2 = 1..10` は一度きりのセットアップ）であり、ここでは監査の可読性のためのオプション選択として示しているに過ぎない — 明示的な割引系列の方がレビュアーにとって追いやすい場合があるからで、キャッシュの回避策ではない。どちらの形でも構わない。不規則な日付には `XNPV(rate, values, dates)` も同様にキャッシュされる；SUMPRODUCT の等価形は `SUMPRODUCT(values/(1+rate)^((dates-base_date)/365))`。
 
-**Step 5 — 2-axis sensitivity grid (WACC × g).** 5×5 grid. Rows = WACC values `7.5% ... 11.5%`, cols = `g` values `1.5% ... 3.5%`. Each cell = one self-contained formula re-running the DCF with the grid's WACC and g substituted. Template:
+**ステップ5 — 2軸感応度グリッド（WACC × g）。** 5×5 グリッド。行 = WACC の値 `7.5% ... 11.5%`、列 = `g` の値 `1.5% ... 3.5%`。各セルは、グリッドの WACC と g を代入して DCF を再実行する独立した数式1個。テンプレート:
 
 ```bash
-# Cell D14 (first data cell, grid anchor at C14 = WACC label, C15 = first WACC value)
-# Substitute $D$13 (this cell's g) and $C15 (this cell's WACC) into a replicated EV + equity formula.
+# セル D14（最初のデータセル、グリッドのアンカーは C14 = WACC ラベル、C15 = 最初の WACC 値）
+# このセルの g である $D$13 と、このセルの WACC である $C15 を、複製した EV + equity 数式に代入する。
 cat <<'EOF' | officecli batch "$FILE"
 [
   {"command":"set","path":"/Sensitivity/D15","props":{"formula":"(NPV($C15,FCF!$B$11:$K$11)+(FCF!$K$11*(1+D$14)/($C15-D$14))/(1+$C15)^10+(-NetDebt))/SharesOut","numberformat":"$0.00"}}
@@ -247,32 +247,32 @@ cat <<'EOF' | officecli batch "$FILE"
 EOF
 ```
 
-Copy the formula across D15:H19 (5×5 grid). Row 14 carries g values (blue input); column C carries WACC values (blue input). Row 13 and column B carry labels. Apply 3-color gradient CF for quick-read (green = upside, red = downside):
+D15:H19（5×5 グリッド）に数式をコピーする。14行目には g の値（青入力）、C列には WACC の値（青入力）。13行目と B列にはラベル。パッと読める3色グラデーション CF を適用する（緑＝アップサイド、赤＝ダウンサイド）:
 
 ```bash
 officecli add "$FILE" /Sensitivity --type conditionalformatting \
   --prop type=colorScale --prop ref=D15:H19
 ```
 
-**No Excel Data Tables.** Excel's native `/Data/Table` 2-variable table is not reliably supported via the CLI — each grid cell MUST be an explicit formula. Copy the template, do not try `Data Table` input cells.
+**Excel の Data Tables は不可。** Excel ネイティブの `/Data/Table`（2変数テーブル）は CLI 経由では確実にサポートされない — 各グリッドセルは明示的な数式でなければならない。テンプレートをコピーし、`Data Table` の入力セルは試みないこと。
 
-**Verification.**
+**検証。**
 
 ```bash
-officecli get "$FILE" "/DCF/C8" --json | jq '.data.results[0].format.cachedValue'   # equity value, plausible $
-officecli get "$FILE" "/DCF/C9" --json | jq '.data.results[0].format.cachedValue'   # per-share, in $XX.XX range
-officecli get "$FILE" "/Sensitivity/F17" --json | jq '.data.results[0].format.cachedValue'   # grid center cell, plausible
+officecli get "$FILE" "/DCF/C8" --json | jq '.data.results[0].format.cachedValue'   # エクイティバリュー、妥当な$金額
+officecli get "$FILE" "/DCF/C9" --json | jq '.data.results[0].format.cachedValue'   # 一株当たり、$XX.XX の範囲
+officecli get "$FILE" "/Sensitivity/F17" --json | jq '.data.results[0].format.cachedValue'   # グリッド中心セル、妥当な値
 ```
 
-If `C8` or `C9` come back `null` or show the `#OCLI_NOTEVAL!` sentinel, re-set them (non-resident) — see §Build-order & cache-drift.
+`C8` や `C9` が `null` または `#OCLI_NOTEVAL!` センチネルを返す場合は、（non-resident で）再 set する — §ビルド順序とキャッシュドリフト参照。
 
-### Recipe C — LBO model
+### レシピ C — LBO モデル
 
-**What this recipe produces.** Sheets: `Assumptions`, `S&U` (Sources & Uses), `Debt` (multi-tranche schedule), `P&L` (5-yr), `CF`, `Exit` / `Returns`. Outputs: `MOIC`, `IRR`, and a 4-tier returns waterfall. LBO is the stress test — expect circular refs (interest ↔ cash), deepest cross-sheet chains, and the heaviest use of named ranges.
+**このレシピが生成するもの。** シート: `Assumptions`、`S&U`（Sources & Uses）、`Debt`（マルチトランシェスケジュール）、`P&L`（5年）、`CF`、`Exit` / `Returns`。出力: `MOIC`、`IRR`、4段階のリターンウォーターフォール。LBO はストレステストであり、循環参照（利息⇄現金）、最も深いシート横断連鎖、そして最も多用される名前付き範囲が予想される。
 
-**Build order.** `Assumptions → S&U → P&L → Debt → CF → Exit → Returns`. P&L before Debt (debt interest depends on P&L EBIT for coverage checks); Debt before CF (CF uses interest + principal amortization). Enable `calc.iterate` before Step 5.
+**ビルド順序。** `Assumptions → S&U → P&L → Debt → CF → Exit → Returns`。P&L を Debt より先に（デットの利息はカバレッジチェックのため P&L の EBIT に依存する）；Debt を CF より先に（CF は利息＋元本償却を使う）。ステップ5の前に `calc.iterate` を有効化する。
 
-**Step 1 — Sources & Uses (balance required, every fee line itemized).**
+**ステップ1 — Sources & Uses（バランス必須、すべての手数料行を項目別に）。**
 
 ```
 Uses    = Purchase_EV (EntryEBITDA × EntryMultiple) + Transaction_fees (Purchase_EV × TxnFeePct, typ 1.5–2.5%)
@@ -280,25 +280,25 @@ Uses    = Purchase_EV (EntryEBITDA × EntryMultiple) + Transaction_fees (Purchas
 Sources = Senior_TLB + Mezz + Revolver_drawn + Sponsor_equity
 ```
 
-**Sponsor equity — pick one, never both.** (a) **Stated:** `Sponsor_equity = Assumptions!SponsorEquity`, then scale senior/mezz so Sources = Uses (fees absorbed by debt, not a silent plug). (b) **Solved:** `Sponsor_equity = Uses − Senior − Mezz − Revolver − Refinanced`, label "Sponsor Equity (solved)", no standalone Assumptions ref. Hardcoded `SponsorEquity` PLUS a `=Uses − Senior − Mezz` plug guarantees silent fee absorption — stated $140M vs plug $194.67M = $54.67M unaccounted fees, CFO rejection on sight.
+**スポンサーエクイティ — どちらか一方を選び、両方は使わない。** (a) **固定額:** `Sponsor_equity = Assumptions!SponsorEquity` とし、senior/mezz をスケーリングして Sources = Uses にする（手数料は debt が吸収し、サイレントなプラグにはしない）。(b) **逆算:** `Sponsor_equity = Uses − Senior − Mezz − Revolver − Refinanced`、ラベルは「Sponsor Equity (solved)」、独立した Assumptions 参照は持たない。ハードコードされた `SponsorEquity` に加えて `=Uses − Senior − Mezz` のプラグを持つと、手数料がサイレントに吸収される — 固定額 $140M に対しプラグ $194.67M = $54.67M の手数料が説明不能になり、CFO に一目で却下される。
 
 ```bash
-# Sources = Uses hard check.
+# Sources = Uses のハードチェック。
 officecli set "$FILE" /S&U/B12 --prop formula='IF(ABS(SUM(B4:B7)-SUM(B9:B11))<1,"BALANCED","S&U IMBALANCE: "&ROUND(SUM(B4:B7)-SUM(B9:B11),0))' --prop bold=true
 
-# Stated-vs-plug consistency (Gate 4 addendum; only run if you chose pattern (a)).
+# 固定額 vs プラグの整合性チェック（Gate 4 の追補；パターン(a)を選んだ場合のみ実行）。
 STATED=$(officecli get "$FILE" /Assumptions/B12 --json | jq -r '.data.results[0].format.cachedValue // "null"')
-PLUGGED=$(officecli get "$FILE" /S&U/B10 --json | jq -r '.data.results[0].format.cachedValue // "null"')   # B10 = sponsor-equity row on S&U
+PLUGGED=$(officecli get "$FILE" /S&U/B10 --json | jq -r '.data.results[0].format.cachedValue // "null"')   # B10 = S&U のスポンサーエクイティ行
 DELTA=$(python3 -c "print(abs(float('$STATED') - float('$PLUGGED')))" 2>/dev/null || echo 99999)
 python3 -c "import sys; sys.exit(0 if float('$DELTA') <= 1 else 1)" && echo "S&U sponsor OK (stated=$STATED plug=$PLUGGED)" || { echo "REJECT Gate 4 S&U: stated $STATED ≠ plug $PLUGGED (Δ=$DELTA) — fees silently absorbed"; exit 1; }
 ```
 
-Every non-sponsor line on `S&U` is a blue Assumptions input (target EBITDA, entry multiple, fee %s) or a derived formula. No hardcoded Uses / Sources numbers.
+`S&U` のスポンサー以外のすべての行は、青い Assumptions 入力（目標 EBITDA、エントリーマルチプル、手数料率など）か派生数式のいずれか。Uses / Sources のハードコード数値は不可。
 
-**Step 2 — Debt schedule (multi-tranche).** One row per tranche per year. Columns: `BeginningBalance` / `Mandatory amortization` / `Cash sweep` / `EndingBalance` / `AverageBalance` / `InterestExpense`. Senior TLB: 1% mandatory amortization + all excess cash to sweep. Mezz: 0% amortization, interest-only cash-pay. Row-map for this example (senior TLB tranche, year 2 column C): `C4=Beginning Balance, C5=Mandatory Amort, C6=Ending Balance, C7=Cash Sweep, C8=Average Balance, C9=Interest Expense`. `CF!C20` = free cash available to sweep (year-2 ending cash pre-sweep on CF sheet). Substitute your tranche row block per layout.
+**ステップ2 — デットスケジュール（マルチトランシェ）。** トランシェ × 年で1行。列: `BeginningBalance` / `Mandatory amortization` / `Cash sweep` / `EndingBalance` / `AverageBalance` / `InterestExpense`。シニア TLB: 1% の強制償却＋余剰キャッシュはすべてスイープへ。Mezz: 償却0%、キャッシュペイの利息のみ。この例の行マップ（シニア TLB トランシェ、2年目の C 列）: `C4=Beginning Balance, C5=Mandatory Amort, C6=Ending Balance, C7=Cash Sweep, C8=Average Balance, C9=Interest Expense`。`CF!C20` = スイープ可能なフリーキャッシュ（CF シート上の2年目・スイープ前の期末現金）。レイアウトに応じてトランシェ行ブロックを差し替えること。
 
 ```bash
-# year 2 senior TLB
+# 2年目 シニア TLB
 cat <<'EOF' | officecli batch "$FILE"
 [
   {"command":"set","path":"/Debt/C4","props":{"formula":"B6"}},
@@ -309,34 +309,34 @@ cat <<'EOF' | officecli batch "$FILE"
   {"command":"set","path":"/Debt/C9","props":{"formula":"-C8*Assumptions!$B$31","numberformat":"$#,##0;($#,##0);\"-\""}}
 ]
 EOF
-# Add the sweep-rule comment as a classic comment (comment is NOT a cell prop — separate --type comment).
+# スイープルールのコメントをクラシックコメントとして追加する（comment はセルのプロパティではなく、独立した --type comment）。
 officecli add "$FILE" /Debt --type comment --prop ref=C7 --prop text='cash sweep capped at available cash and remaining tranche balance'
 ```
 
-**Revolver capacity cap.** If your deal uses a revolver tranche, the revolver balance each period is bounded by the commitment ceiling:
+**リボルバー枠の上限。** 取引にリボルバートランシェがある場合、各期のリボルバー残高はコミットメント上限で制限される:
 ```
 Revolver_Balance = MIN(Assumptions!RevolverCapacity, MAX(0, prior_revolver + draw − paydown))
 ```
-Without the `MIN(capacity, ...)` outer, a shortfall quarter silently over-draws the facility.
+`MIN(capacity, ...)` の外側がなければ、不足四半期に facility を静かに超過してドローしてしまう。
 
-Adjust row indices to your layout. Repeat for each tranche (senior / mezz / revolver) and each year.
+行インデックスは自分のレイアウトに合わせて調整する。各トランシェ（シニア / メザニン / リボルバー）と各年について繰り返す。
 
-**Step 3 — P&L (5-year) + interest from Debt.** P&L interest row pulls from Debt: `Interest = 'Debt'!TotalInterestRowY<N>`. This creates the **circular reference**: Interest → NI → CF → Cash Sweep → Debt balance → Interest.
+**ステップ3 — P&L（5年）＋ Debt からの利息。** P&L の利息行は Debt から取得する: `Interest = 'Debt'!TotalInterestRowY<N>`。これが**循環参照**を作る: Interest → NI → CF → Cash Sweep → Debt balance → Interest。
 
-**Write-order warning.** `calc.iterate=true` governs _recalculation_, not write-phase. Appending the closing leg of a cross-sheet ring to a file that already contains the ring deadlocks the engine at 100% CPU regardless of `iterate`. For complex rings (multi-tranche LBO, revolver + TLB + mezz), use §Write-order surgery below (de-ring → write downstream → re-ring). Enable `calc.iterate=true` BEFORE writing ring formulas:
+**書き込み順序に関する警告。** `calc.iterate=true` は_再計算_を制御するのであって、書き込みフェーズを制御するのではない。すでにリングを含むファイルにシート横断リングの締めくくりの脚を追加すると、`iterate` の値にかかわらずエンジンが CPU 100% でデッドロックする。複雑なリング（マルチトランシェ LBO、リボルバー＋TLB＋メザニン）では、以下の §Write-order surgery（デリング → 下流を書く → 再リング）を使う。リング数式を書く**前に** `calc.iterate=true` を有効化する:
 
 ```bash
 officecli set "$FILE" / --prop calc.iterate=true --prop calc.iterateCount=100 --prop calc.iterateDelta=0.001
 ```
 
-`iterate` converges via successive approximation for naturally-dampening loops (higher interest → less cash → less sweep → higher balance, bounded by EBIT). `#REF!` or divergent values = pause; fix algebra, do not raise `iterateCount` to 1000.
+`iterate` は、自然に減衰するループ（利息が上がる→現金が減る→スイープが減る→残高が上がる、EBIT で有界）に対して逐次近似で収束する。`#REF!` や発散する値が出たら一旦止め、`iterateCount` を1000に上げるのではなく代数を修正すること。
 
-**Step 4 — CF + cash sweep.** Ending cash = Opening + CFO − CapEx − Mandatory amort − Cash sweep. Cash sweep = `MIN(freeCashAfterCapEx, seniorDebtBalance + seniorMandatoryAmort)`. The `MIN` cap prevents swept-below-zero.
+**ステップ4 — CF＋キャッシュスイープ。** Ending cash = Opening + CFO − CapEx − Mandatory amort − Cash sweep。Cash sweep = `MIN(freeCashAfterCapEx, seniorDebtBalance + seniorMandatoryAmort)`。`MIN` の上限がゼロ未満へのスイープを防ぐ。
 
-**Step 5 — Exit + Returns.** Row-map: `Exit: B3=Exit EV, B4=Less: remaining debt, B5=Exit equity to sponsor`; `Returns: B3=MOIC, B4=IRR`.
+**ステップ5 — Exit＋Returns。** 行マップ: `Exit: B3=Exit EV, B4=Less: remaining debt, B5=Exit equity to sponsor`；`Returns: B3=MOIC, B4=IRR`。
 
 ```bash
-# Values/formulas — single non-resident batch.
+# 値/数式 — 単一の non-resident batch。
 cat <<'EOF' | officecli batch "$FILE"
 [
   {"command":"set","path":"/Exit/B3","props":{"formula":"'P&L'!F8*Assumptions!$B$25","numberformat":"$#,##0;($#,##0);\"-\""}},
@@ -346,43 +346,43 @@ cat <<'EOF' | officecli batch "$FILE"
   {"command":"set","path":"/Returns/B4","props":{"formula":"IRR({-'S&U'!B9,0,0,0,0,'Exit'!B5})","numberformat":"0.0%"}}
 ]
 EOF
-# Classic comments — one --type comment per anchor cell.
+# クラシックコメント — アンカーセルごとに1つの --type comment。
 officecli add "$FILE" /Exit --type comment --prop ref=B3 --prop text='Exit EV = Y5 EBITDA × exit multiple'
 officecli add "$FILE" /Returns --type comment --prop ref=B3 --prop text='MOIC = exit equity / sponsor equity'
 officecli add "$FILE" /Returns --type comment --prop ref=B4 --prop text='IRR — 5-yr, entry + exit only; use XIRR for mid-year dividends'
 ```
 
-**Callout — labels: `comment` element vs Notes column vs `formula` (three distinct mechanics).**
-- **Hover tooltip** → `officecli add ... --type comment --prop ref=<cell> --prop text='...'`. The **`comment` key is NOT a valid prop on `set cell`** (not in `officecli help xlsx cell`) — it silently drops when embedded inside a `set cell` props dict. Use the dedicated element.
-- **Visible text in an adjacent Notes column** → `{"command":"set","path":"/DCF/D3","props":{"value":"TV = FCF × (1+g) / (WACC−g)"}}` — **`value`, not `formula`**, plain quoted string.
-- **Formula-style prose written as a real formula** → NEVER. `{"formula":"FCF10*(1+g)/(WACC-g)"}` produces `#NAME?` in Excel (`FCF10`, `g`, `WACC` are unbound identifiers in that cell context).
+**コールアウト — ラベル: `comment` 要素 vs Notes 列 vs `formula`（3つの異なる仕組み）。**
+- **ホバーツールチップ** → `officecli add ... --type comment --prop ref=<cell> --prop text='...'`。**`comment` キーは `set cell` の有効なプロパティではなく**（`officecli help xlsx cell` に存在しない）、`set cell` の props dict に埋め込んでもサイレントに無視される。専用の要素を使うこと。
+- **隣接する Notes 列に表示するテキスト** → `{"command":"set","path":"/DCF/D3","props":{"value":"TV = FCF × (1+g) / (WACC−g)"}}` — **`formula` ではなく `value`**、単なる引用符付き文字列。
+- **数式風の文章を実際の数式として書く** → 絶対にしない。`{"formula":"FCF10*(1+g)/(WACC-g)"}` は Excel で `#NAME?` になる（そのセルコンテキストでは `FCF10`、`g`、`WACC` は未バインドの識別子）。
 
-For mid-year dividends or partial exits, use `XIRR({cashflows}, {dates})` instead of `IRR`.
+年央配当や部分エグジットには、`IRR` の代わりに `XIRR({cashflows}, {dates})` を使う。
 
-**Step 6 — Returns waterfall (optional, 4-tier LP/GP).** Tiers: (1) LP preferred return 8% ; (2) GP catch-up to 20% ; (3) 80/20 split above hurdle ; (4) 100% to LP on loss. Each tier is a `MAX(0, MIN(...))` clamp. See §Sensitivity & scenarios for the general grid pattern.
+**ステップ6 — リターンウォーターフォール（任意、4段階 LP/GP）。** 段階: (1) LP 優先リターン 8%；(2) GP キャッチアップ 20% まで；(3) ハードル超過分の 80/20 分配；(4) 損失時は LP に100%。各段階は `MAX(0, MIN(...))` のクランプ。一般的なグリッドパターンは §Sensitivity & scenarios を参照。
 
-**Verification.**
+**検証。**
 
 ```bash
-officecli get "$FILE" /S&U/B12 --json | jq '.data.results[0].format.cachedValue // .data.results[0].text'   # must say BALANCED
-officecli get "$FILE" /Returns/B3 --json | jq '.data.results[0].format.cachedValue'                # MOIC, expect 2.0x-4.0x typical
-officecli get "$FILE" /Returns/B4 --json | jq '.data.results[0].format.cachedValue'                # IRR, expect 0.15-0.30 typical
-# Iterate converged?
-officecli query "$FILE" 'cell:contains("#REF!")' --json | jq '.data.results | length'   # must be 0
+officecli get "$FILE" /S&U/B12 --json | jq '.data.results[0].format.cachedValue // .data.results[0].text'   # BALANCED と表示されなければならない
+officecli get "$FILE" /Returns/B3 --json | jq '.data.results[0].format.cachedValue'                # MOIC、典型的には2.0x〜4.0xを想定
+officecli get "$FILE" /Returns/B4 --json | jq '.data.results[0].format.cachedValue'                # IRR、典型的には0.15〜0.30を想定
+# Iterate は収束したか？
+officecli query "$FILE" 'cell:contains("#REF!")' --json | jq '.data.results | length'   # 0でなければならない
 ```
 
-## Sensitivity & scenarios
+## 感応度とシナリオ
 
-**Three patterns, pick one:**
-- **(a) Base / Upside / Downside columns** on Assumptions — side-by-side scenarios, dropdown-less switch via an "Active" column + `INDEX/MATCH`.
-- **(b) Dropdown + `INDEX/MATCH` switch** — one validation dropdown on Summary drives every driver via `INDEX(Base:Downside, MATCH(Dropdown, ScenLabels, 0))`.
-- **(c) 2-axis sensitivity grid** — 5×5 or 7×7, one self-contained formula per cell, row/col headers are the two drivers. See Recipe B Step 5 for WACC × g.
+**3パターンから1つ選ぶ:**
+- **(a) Assumptions 上の Base / Upside / Downside 列** — 横並びのシナリオ、"Active" 列＋ `INDEX/MATCH` によるドロップダウンなしの切替。
+- **(b) ドロップダウン＋ `INDEX/MATCH` スイッチ** — Summary 上の1つの入力規則ドロップダウンが `INDEX(Base:Downside, MATCH(Dropdown, ScenLabels, 0))` を通じてすべてのドライバーを駆動する。
+- **(c) 2軸感応度グリッド** — 5×5 または 7×7、セルごとに独立した数式1つ、行/列見出しが2つのドライバー。WACC × g についてはレシピ B ステップ5を参照。
 
-Mixing (a)+(b) creates circular input (scenario picked by dropdown AND overwritten by Active column) — pick one.
+(a)+(b) を混在させると循環入力になる（シナリオがドロップダウンで選ばれつつ Active 列でも上書きされる）— どちらか一方を選ぶこと。
 
-**Grid rule:** each cell substitutes row-driver and col-driver into a self-contained copy of the output formula. Cannot reference the `WACC` named range (that's the panel) — reference the grid's axis cell.
+**グリッドのルール:** 各セルは、出力数式の独立したコピーに行ドライバーと列ドライバーを代入する。`WACC` 名前付き範囲（それはパネルのもの）は参照できず、グリッドの軸セルを参照する。
 
-**Dropdown scenario switch.** One `validation` dropdown on Summary drives every `Assumptions` row:
+**ドロップダウンによるシナリオ切替。** Summary 上の1つの `validation` ドロップダウンが、すべての `Assumptions` 行を駆動する:
 
 ```bash
 cat <<'EOF' | officecli batch "$FILE"
@@ -391,53 +391,53 @@ cat <<'EOF' | officecli batch "$FILE"
   {"command":"set","path":"/Assumptions/B5","props":{"formula":"INDEX(C5:E5,MATCH(Summary!$B$1,$C$4:$E$4,0))"}}
 ]
 EOF
-# If you want a hover tooltip on B5, add it separately:
+# B5 にホバーツールチップを付けたい場合は、別途追加する:
 officecli add "$FILE" /Assumptions --type comment --prop ref=B5 --prop text='Revenue growth — picked by Summary!B1 scenario dropdown'
 ```
 
-Every `Assumptions` driver row gets the same `INDEX/MATCH`. Base / Upside / Downside columns on C:E stay blue (hardcoded scenario inputs).
+すべての `Assumptions` ドライバー行に同じ `INDEX/MATCH` を設定する。C:E の Base / Upside / Downside 列は青のまま（ハードコードされたシナリオ入力）。
 
-**Football-field chart pattern (DCF valuation summary).** Horizontal Low→High bars for 3–5 valuation methods (DCF base, DCF bear, Trading comps, Precedent txns, LBO floor) stacked vertically. On a `Football` sheet: col A = method label, col B = Low $, col C = High $, col D = `=C−B` (width). Chart as a stacked bar with column B as an invisible first series (white/no-fill) and column D as the visible series — `dataRange=Football!A3:D7`, `chartType=bar`. Excel reads this as a floating bar per method.
+**フットボールフィールドチャートのパターン（DCF バリュエーションサマリー）。** 3〜5つのバリュエーション手法（DCF base、DCF bear、Trading comps、Precedent txns、LBO floor）について、横向きの Low→High バーを縦に積む。`Football` シート上: A列 = 手法ラベル、B列 = Low $、C列 = High $、D列 = `=C−B`（幅）。チャートは積み上げ横棒で、B列を不可視の最初の系列（白/塗りなし）、D列を可視の系列にする — `dataRange=Football!A3:D7`、`chartType=bar`。Excel はこれを手法ごとの浮遊バーとして読み込む。
 
-## Financial function patterns
+## 財務関数パターン
 
-Terse reference — not a finance textbook. If you don't know what these do, pause and ask the user.
+簡潔なリファレンスであり、ファイナンスの教科書ではない。これらが何をするか分からない場合は、一旦止めてユーザーに確認すること。
 
-| Function | Prefer over | Why |
+| 関数 | 優先すべき対象 | 理由 |
 |---|---|---|
-| `XNPV(rate, values, dates)` | `NPV` | Irregular cash flow dates (M&A close mid-year, staggered tranches) |
-| `XIRR(values, dates)` | `IRR` | Irregular dates; multiple sign changes handled better |
-| `INDEX(range, MATCH(lookup, key, 0))` | `VLOOKUP` | Insert-safe (VLOOKUP breaks when a column is inserted in the source range) |
-| `IFERROR(x/y, 0)` or `IF(y=0, 0, x/y)` | bare division | Guard every `/` in a financial model — `#DIV/0!` shipped = delivery failure |
-| `MIRR(values, financeRate, reinvestRate)` | `IRR` with sign flips | When cash-flow pattern has 2+ sign changes |
-| `SUMIFS(sumRange, criteriaRange1, criterion1, ...)` | `SUMPRODUCT((...))` array | Clearer intent for conditional sums; either evaluates correctly |
+| `XNPV(rate, values, dates)` | `NPV` | 不規則なキャッシュフロー日付（M&A クローズが年央、段階的トランシェ） |
+| `XIRR(values, dates)` | `IRR` | 不規則な日付；複数回の符号変化をより適切に処理 |
+| `INDEX(range, MATCH(lookup, key, 0))` | `VLOOKUP` | 挿入に強い（VLOOKUP はソース範囲に列が挿入されると壊れる） |
+| `IFERROR(x/y, 0)` または `IF(y=0, 0, x/y)` | 素の除算 | 財務モデルではすべての `/` をガードする — `#DIV/0!` を出荷すると納品失敗 |
+| `MIRR(values, financeRate, reinvestRate)` | 符号反転を伴う `IRR` | キャッシュフローパターンに符号変化が2回以上ある場合 |
+| `SUMIFS(sumRange, criteriaRange1, criterion1, ...)` | 配列 `SUMPRODUCT((...))` | 条件付き合計として意図が明確；どちらも正しく評価される |
 
-**Evaluator coverage — verify, don't preemptively hardcode.** The CLI evaluator computes the finance functions this skill uses — `NPV` / `XNPV` / `IRR` / `XIRR`, array-literal formulas (`IRR({...})`), and `SUMPRODUCT(1/COUNTIF(range,range))` distinct-count — and caches the correct value with `evaluated:true`. There is no `NPV→0` rewrite obligation and no distinct-count `1/N` trap. The honest rule: build the formula you mean, then verify the cached value with a readback (`get ... --json | jq '.data.results[0].format.cachedValue'`). Only if a specific cell genuinely comes back with the `#OCLI_NOTEVAL!` sentinel (formula written before its inputs, or an unsupported function) should you fall back — first re-set non-resident after `close`; if it still won't evaluate, hardcode the computed value with a blue font and a classic comment via `officecli add "$FILE" /Sheet --type comment --prop ref=<cell> --prop text='cached valuation; refreshes on open in Excel — do not edit'`, and disclose in delivery notes.
+**エバリュエーターのカバレッジ — 検証すること、先回りしてハードコードしないこと。** CLI のエバリュエーターは、本スキルが使うファイナンス関数 — `NPV` / `XNPV` / `IRR` / `XIRR`、配列リテラル数式（`IRR({...})`）、`SUMPRODUCT(1/COUNTIF(range,range))` の重複除外カウント — を計算し、`evaluated:true` で正しい値をキャッシュする。`NPV→0` に書き換える義務も、重複除外カウントの `1/N` トラップもない。正直なルールは: 意図通りの数式を組み、読み戻しでキャッシュ値を検証すること（`get ... --json | jq '.data.results[0].format.cachedValue'`）。特定のセルが本当に `#OCLI_NOTEVAL!` センチネルを返す場合のみ（入力より前に書かれた数式、あるいは未サポートの関数）フォールバックする — まず `close` 後に non-resident で再 set し、それでも評価されなければ、計算済みの値を青字＋クラシックコメントでハードコードする（`officecli add "$FILE" /Sheet --type comment --prop ref=<cell> --prop text='cached valuation; refreshes on open in Excel — do not edit'`）、そして納品ノートで開示すること。
 
-## Circular references & iterative calc
+## 循環参照と反復計算
 
-**Enable `calc.iterate` ONLY when circularity is algebraically justified:** Interest ↔ Cash (LBO revolver / cash sweep), Tax shield ↔ NI (rare — most 3-statement models compute interest before tax and avoid), Revolver plug ↔ Ending cash (corporate cash waterfall with min-cash).
+**`calc.iterate` を有効化するのは、循環性が代数的に正当化される場合のみ:** 利息⇄現金（LBO のリボルバー / キャッシュスイープ）、税シールド⇄NI（稀 — ほとんどの3ステートメントモデルは税引前に利息を計算し、これを回避する）、リボルバープラグ⇄期末現金（最低現金を伴う企業キャッシュウォーターフォール）。
 
 ```bash
 officecli set "$FILE" / --prop calc.iterate=true --prop calc.iterateCount=100 --prop calc.iterateDelta=0.001
 ```
 
-`iterateCount=100` / `iterateDelta=0.001` are Excel defaults, fine for naturally dampening loops.
+`iterateCount=100` / `iterateDelta=0.001` は Excel のデフォルトで、自然に減衰するループには問題ない。
 
-### Write-order surgery (de-ring → write downstream → re-ring)
+### 書き込み順序サージェリー（デリング → 下流を書く → 再リング）
 
-`calc.iterate` controls recalc, not write-phase. Appending the closing leg of an already-wired cross-sheet ring (Debt.Interest ↔ CF.Cash ↔ Debt.CashSweep) deadlocks at 100% CPU; `view html` / `get` also hang on a non-converged ring.
+`calc.iterate` は再計算を制御するのであって、書き込みフェーズは制御しない。すでに配線済みのシート横断リング（Debt.Interest ⇄ CF.Cash ⇄ Debt.CashSweep）の締めくくりの脚を追加すると CPU 100% でデッドロックする；未収束のリングでは `view html` / `get` もハングする。
 
-**3-step playbook:**
-1. **De-ring** — write Debt with the 10–20 ring cells set to literal `0` (e.g. `C7=0`, not `=-MIN(...)`). Removes the ring.
-2. **Write downstream** — build all non-circular chains (P&L, CF, Exit, Returns, Summary, grid) non-resident, one heredoc per sheet. Everything caches against the zeroed cells.
-3. **Re-ring** — close all residents, re-set each circular cell with its real formula, one `set` per cell, non-resident.
+**3ステップの手順:**
+1. **デリング** — Debt を書く際、リングの10〜20個のセルをリテラルの `0` にセットする（例: `C7=0`、`=-MIN(...)` ではなく）。リングを取り除く。
+2. **下流を書く** — 非循環のすべての連鎖（P&L、CF、Exit、Returns、Summary、グリッド）を non-resident で、シートごとに1つのヒアドキュメントで構築する。すべてがゼロ化されたセルに対してキャッシュされる。
+3. **再リング** — resident をすべて閉じ、各循環セルに実際の数式を再 set する、1セルにつき1回の `set`、non-resident で。
 
-**Acceptance.** `get /Debt/C7 --json | jq '.data.results[0].format.cachedValue'` returns non-zero non-null. If a cell still deadlocks, leave `=0` + classic comment `"circular; recalculates in Excel on F9"`, flag at delivery. Never paper over with `iterateCount=1000`.
+**受け入れ基準。** `get /Debt/C7 --json | jq '.data.results[0].format.cachedValue'` が非ゼロ非 null を返すこと。それでもデッドロックするセルがあれば、`=0` ＋クラシックコメント「circular; recalculates in Excel on F9」を残し、納品時にフラグを立てる。`iterateCount=1000` で覆い隠すことは絶対にしない。
 
-**Do NOT use `iterate` as a band-aid for `#REF!` / divergent values.** Raising `iterateCount` to 1000 hides the bug and ships a plausibly-wrong value; `validate` does not catch it. Break the loop algebraically (e.g. interest on opening balance only, not average).
+**`#REF!` /発散値の応急処置として `iterate` を使わないこと。** `iterateCount` を1000に上げるとバグが隠れ、それらしく誤った値を出荷してしまう；`validate` はそれを検出しない。ループは代数的に断つこと（例: 平均残高ではなく期首残高に対する利息にする）。
 
-**Verify convergence.** Read the loop cell, bump a driving assumption and back, re-read — values must match:
+**収束の検証。** ループのセルを読み、駆動する前提条件を上げてから戻し、再度読む — 値が一致しなければならない:
 
 ```bash
 V1=$(officecli get "$FILE" /Debt/C9 --json | jq '.data.results[0].format.cachedValue')
@@ -447,17 +447,17 @@ V2=$(officecli get "$FILE" /Debt/C9 --json | jq '.data.results[0].format.cachedV
 [ "$V1" = "$V2" ] && echo "Iterate converged" || echo "WARN: drift V1=$V1 V2=$V2 — tighten iterateDelta or check algebra"
 ```
 
-## Audit & Delivery Gate
+## 監査と Delivery Gate
 
-**Assume there are problems.** First build is almost never correct. Run every gate below; every check must print its success line. `validate` passing is not delivery — the model can pass schema and still be wrong by a factor of 10.
+**問題があると想定すること。** 最初のビルドが正しいことはほぼない。以下の全ゲートを実行し、すべてのチェックが成功メッセージを出力しなければならない。`validate` が通ることは納品を意味しない — モデルはスキーマを通過しても、10倍間違っていることがある。
 
-### Gates 1–3 — inherited from xlsx v2 verbatim
+### Gate 1〜3 — xlsx v2 から逐語的に継承
 
-→ see xlsx v2 §QA minimum cycle (Gates 1–3 cover `view issues`, error-cell query, `validate` after close). Run them first, exactly as written in xlsx v2. No financial-model-specific tweaks.
+→ see xlsx v2 §QA minimum cycle（Gate 1〜3 は `view issues`、エラーセルの query、close 後の `validate` をカバーする）。xlsx v2 に書かれている通り、まずこれらを実行する。財務モデル固有の調整はない。
 
-### Gate 4 — statement integrity (3-statement & LBO)
+### Gate 4 — ステートメントの整合性（3ステートメント＆LBO）
 
-Balance-check and cash-reconciliation rows produced by Recipe A / C must show `OK` / `BALANCED` every period. `query` the check rows and refuse on any `IMBALANCED` / `CF !=`:
+レシピ A / C が生成するバランスチェックとキャッシュ照合の行は、すべての期間で `OK` / `BALANCED` を示さなければならない。チェック行に `query` を行い、`IMBALANCED` / `CF !=` が1つでもあれば拒否する:
 
 ```bash
 BS_FAIL=$(officecli query "$FILE" 'cell:contains("IMBALANCED")' --json | jq '.data.results | length')
@@ -470,14 +470,14 @@ else
 fi
 ```
 
-If any fail, the model is silently wrong — fix the upstream chain before delivery. Most common cause: a cross-sheet formula stored `\!` (shell-mangled) — run `officecli query "$FILE" 'cell:contains("\\\\!")'` and re-enter via batch heredoc.
+いずれかが失敗した場合、モデルはサイレントに間違っている — 納品前に上流の連鎖を修正すること。最も一般的な原因: シート横断数式が `\!`（シェルによって壊れた形）で保存されている — `officecli query "$FILE" 'cell:contains("\\\\!")'` を実行し、batch ヒアドキュメント経由で再入力する。
 
-### Gate 5 — cached-value sanity on valuation cells
+### Gate 5 — バリュエーションセルのキャッシュ値の健全性
 
-NPV / IRR / XIRR / equity-bridge / MOIC / summary KPI cells that ship unevaluated (`#OCLI_NOTEVAL!` sentinel, typically because the formula was written before its inputs) send a blank/wrong number to a reader who does not recalc on open. List every valuation cell and confirm a cached value is present:
+NPV / IRR / XIRR / エクイティブリッジ / MOIC / サマリー KPI のセルが未評価のまま（典型的には入力より前に数式が書かれたことによる `#OCLI_NOTEVAL!` センチネル）出荷されると、開いても再計算しない読者に空欄/誤った数値を送ってしまう。すべてのバリュエーションセルを列挙し、キャッシュ値が存在することを確認する:
 
 ```bash
-# Customize the path list per recipe — this is the DCF example
+# パスのリストはレシピごとにカスタマイズする — これは DCF の例
 for P in "/DCF/C4" "/DCF/C5" "/DCF/C6" "/DCF/C8" "/DCF/C9"; do
   V=$(officecli get "$FILE" "$P" --json | jq -r '.data.results[0].format.cachedValue // "null"')
   if [ "$V" = "null" ] || [ "${V#\#OCLI_NOTEVAL}" != "$V" ]; then
@@ -487,74 +487,74 @@ for P in "/DCF/C4" "/DCF/C5" "/DCF/C6" "/DCF/C8" "/DCF/C9"; do
 done
 ```
 
-For LBO, extend the list: `/Exit/B5`, `/Returns/B3`, `/Returns/B4`. For 3-statement, extend with `/Summary/B2:B5`.
+LBO の場合は `/Exit/B5`、`/Returns/B3`、`/Returns/B4` をリストに追加する。3ステートメントの場合は `/Summary/B2:B5` を追加する。
 
-### Gate 6 — hardcode / zone discipline
+### Gate 6 — ハードコード / ゾーンの規律
 
-Every Calc sheet has zero numeric hardcodes. Executable:
+すべての Calc シートのハードコード数値はゼロ。実行可能な形:
 
 ```bash
-# `cell:not(:has(formula))` selects the literal cells (and `cell:has(formula)` the formula cells).
+# `cell:not(:has(formula))` はリテラルセルを選択し（`cell:has(formula)` は数式セルを選択する）。
 HARDCODE=$(officecli query "$FILE" 'cell[type=Number]' --json \
   | jq '[.data.results[] | select(.format.formula == null) | select(.path | test("/(P&L|Balance Sheet|Cash Flow|DCF|Debt|FCF|WACC|Exit|Returns)/"))] | length')
 [ "$HARDCODE" -eq 0 ] && echo "Gate 6 OK (no hardcodes on Calc sheets)" || { echo "REJECT Gate 6: $HARDCODE hardcoded numeric cells on Calc zone — move to Assumptions"; exit 1; }
 
-# Named-range coverage + dead-decoration audit: ≥3 ranges declared AND each referenced by ≥1 formula.
+# 名前付き範囲のカバレッジ＋無用の飾りの監査: ≥3個の範囲が宣言され、かつ各々が≥1個の数式から参照されている。
 NR=$(officecli query "$FILE" namedrange --json | jq '.data.results | length')
 [ "$NR" -ge 3 ] && echo "Gate 6 OK ($NR named ranges)" || echo "WARN Gate 6: only $NR named ranges"
 DEAD=0
 for NR_NAME in $(officecli query "$FILE" namedrange --json | jq -r '.data.results[].format.name'); do
-  # Match the formula SOURCE (`formula~=`), not the cached/displayed RESULT — `:contains` would scan
-  # the computed value and report every name as dead (false reject).
+  # 数式の「ソース」(`formula~=`) にマッチさせ、キャッシュ/表示された「結果」ではないこと — `:contains` だと
+  # 計算値をスキャンしてしまい、すべての名前を dead と誤って報告する（偽の却下）。
   USES=$(officecli query "$FILE" "cell[formula~=$NR_NAME]" --json | jq '.data.results | length')
   [ "$USES" -ge 1 ] && echo "  $NR_NAME: $USES uses OK" || { echo "  WARN: $NR_NAME unused"; DEAD=$((DEAD+1)); }
 done
 [ "$DEAD" -eq 0 ] && echo "Gate 6 named-range audit OK" || { echo "REJECT Gate 6: $DEAD dead-decoration name(s)"; exit 1; }
 ```
 
-### Gate 5b — visual audit via HTML preview (mandatory)
+### Gate 5b — HTML プレビューによるビジュアル監査（必須）
 
-Gates 1–4/6 are grep defenses — they cannot see a rendered sheet. Run `officecli view "$FILE" html` and Read the returned HTML. Walk every sheet (inherits xlsx v2 visual floor):
+Gate 1〜4/6 は grep による防御に過ぎず、レンダリングされたシートを見ることはできない。`officecli view "$FILE" html` を実行し、返却された HTML を Read すること。すべてのシートを歩いて確認する（xlsx v2 のビジュアルフロアを継承）:
 
-- No `###` in any numeric cell (widen column).
-- No truncated labels / section headers (widen column or `alignment.wrapText=true`).
-- No placeholder tokens (`TBD`, `{var}`, `xxxx`) — Gate 6.1 grep below.
-- Balance-check / recon rows say `OK` / `BALANCED` every period column.
-- Dashboard charts render, y-axis = 0 on ARR/revenue lines, source data matches statement sheet.
-- Sensitivity grid colors read green (upside) → red (downside) — color-scale CF applied.
-- No stale cached `0` on summary KPIs; if present, run cache-refresh pass.
+- 数値セルに `###` がないこと（列幅を広げる）。
+- ラベル / セクションヘッダーが省略されていないこと（列幅を広げるか `alignment.wrapText=true`）。
+- プレースホルダートークン（`TBD`、`{var}`、`xxxx`）がないこと — 下記の Gate 6.1 grep。
+- バランスチェック / 照合行が、期間列すべてで `OK` / `BALANCED` を示していること。
+- ダッシュボードのチャートがレンダリングされ、ARR/revenue 系列の y 軸が 0 起点で、ソースデータがステートメントシートと一致していること。
+- 感応度グリッドの色が緑（アップサイド）→赤（ダウンサイド）で読めること — カラースケール CF が適用されていること。
+- サマリー KPI に古いキャッシュ `0` が残っていないこと；残っていればキャッシュ再更新パスを実行する。
 
-REJECT on any defect. **Human preview:** `officecli watch "$FILE"`, or open in Excel / WPS / Numbers — final colors + chart fidelity only fully render in the target viewer.
+欠陥があれば REJECT。**人による目視プレビュー:** `officecli watch "$FILE"`、または Excel / WPS / Numbers で開く — 最終的な色とチャートの忠実度は対象ビューアでのみ完全にレンダリングされる。
 
-### Gate 6.1 — token / placeholder sweep
+### Gate 6.1 — トークン / プレースホルダーの一斉検査
 
 ```bash
 LEAK=$(officecli view "$FILE" text | grep -niE 'TBD|\(fill in\)|xxxx|lorem|\{\{|placeholder|coming soon')
 [ -z "$LEAK" ] && echo "Gate 6.1 OK (no placeholder tokens)" || { echo "REJECT Gate 6.1:"; echo "$LEAK"; exit 1; }
 ```
 
-### Honest limit
+### 正直な限界
 
-`validate` catches schema errors, not finance errors. A model passes `validate` with `BS.Cash` hardcoded to force balance, an `NPV` cached at `0`, a sensitivity grid all-zero because it was built before FCF, a `#NAME?` runtime on a `P&L`-named sheet with unquoted refs. Gates 4 / 5 / 6 / 5b exist because schema-level `validate` cannot catch any of this.
+`validate` はスキーマエラーを検出するのであって、ファイナンスのエラーは検出しない。モデルは、`BS.Cash` がバランスを取るためにハードコードされていても、`NPV` が `0` でキャッシュされていても、感応度グリッドが FCF の前に構築されたためオール0になっていても、引用符なしの参照を持つ `P&L` という名前のシートで `#NAME?` の実行時エラーが起きていても、`validate` を通過してしまう。Gate 4 / 5 / 6 / 5b が存在するのは、スキーマレベルの `validate` がこれらを一切検出できないからである。
 
 ## Known Issues & Pitfalls
 
-→ Base pitfalls (cross-sheet `!` trap, batch JSON dotted-name rule, renderer caveats): see xlsx v2 §Known Issues & Pitfalls — all apply.
+→ ベースの落とし穴（シート横断の `!` トラップ、batch JSON のドット付き名前ルール、レンダラーの注意点）: see xlsx v2 §Known Issues & Pitfalls — すべて適用される。
 
-Financial-model-specific:
+財務モデル固有:
 
-- **AP sign on COGS.** Accounts Payable: if COGS is stored negative on the P&L, AP formula must negate — `=-COGS*DaysPayable/365`. Wrong sign inflates NWC and flips CF direction. Silent; passes `validate`.
-- **`#NAME?` not caught by `query` / `validate`.** A cross-sheet formula referencing `P&L!B3` without quoting the sheet name (because `&` is special) lands at runtime as `#NAME?`. Always write cross-sheet refs as `'P&L'!B3` — single-quote the sheet name if it contains `&`, space, `(`, `)`, etc. Gate 5b visual check is the only detection.
-- **Iterative calc silent non-convergence.** `calc.iterate=true iterateCount=100` converges at whatever the cap lands on — even if the true answer is 2× that. Always run convergence verify (§Circular references). Complex LBO rings (multi-tranche debt + sweep + tax shield) may not converge; when `cachedValue=0` on a ring cell, use §Write-order surgery.
-- **Batch-while-resident deadlock on circular writes.** Writing the closing leg of a cross-sheet ring via `batch` with a resident open deadlocks at 100% CPU. Even single `set` on a ring cell can hang. Fix: close residents, write the ring in two passes per §Write-order surgery. Non-resident single-heredoc is the only safe form.
-- **Cross-sheet cached value stale in `view html`.** Downstream written in the same sequence as upstream caches `0`. Excel resolves on open; HTML preview does NOT. Re-set every downstream non-resident after the chain (§Build-order & cache-drift).
-- **`NPV()` / `XNPV()` evaluate and cache correctly.** The evaluator computes both (same-sheet and cross-sheet); no rewrite is required. `SUMPRODUCT(values/(1+rate)^periods)` remains an optional audit-readability alternative, not a cache workaround.
-- **Sensitivity-grid build order still matters.** A grid cell written before its FCF/WACC inputs exist evaluates against empty inputs and may cache a wrong/blank value. Build FCF + WACC + DCF first, then the grid in a separate non-resident batch, and verify (`jq '.data.results[0].format.cachedValue'`). This is an ordering discipline, not an evaluator limitation.
-- **`BS.Cash` = CF ending cash always** (including Y1: `BS.Cash = 'Cash Flow'!B19`). Never an independent plug or Assumptions ref — a plugged `BS.Cash` hides balance errors.
-- **Year 2+ `Opening Cash` = prior period `Ending Cash`** (`C17=B19`, `D17=C19`). Independent Y2+ opening-cash inputs silently drift from BS.
-- **Waterfall chart "total" bars.** `chartType=waterfall` cannot mark total programmatically — use `colors=` convention (dark = total, medium = positive, red = negative). See `help xlsx chart`.
-- **DCF per-share when `SharesOut` is a formula.** `=BasicShares + OptionPool × ExerciseAssumption` → add a blue-font assumption cell and point the `SharesOut` named range at the computed cell, not the raw input.
+- **COGS 上の AP の符号。** Accounts Payable: P&L 上で COGS が負数で保存されている場合、AP の数式は符号を反転させる必要がある — `=-COGS*DaysPayable/365`。符号を誤ると NWC が水増しされ、CF の向きが反転する。サイレントに `validate` を通過してしまう。
+- **`#NAME?` は `query` / `validate` では検出されない。** シート名をクォートせずに `P&L!B3` を参照するシート横断数式（`&` が特殊文字であるため）は、実行時に `#NAME?` になる。シート横断参照は常に `'P&L'!B3` のように書くこと — シート名に `&`、スペース、`(`、`)` などが含まれる場合はシングルクォートで囲む。Gate 5b のビジュアルチェックのみが検出できる。
+- **反復計算のサイレントな未収束。** `calc.iterate=true iterateCount=100` は、真の答えがその2倍であっても、上限に達した時点の値で収束する。常に収束検証を実行すること（§循環参照）。複雑な LBO リング（マルチトランシェのデット＋スイープ＋税シールド）は収束しない場合がある；リングのセルで `cachedValue=0` の場合は §Write-order surgery を使う。
+- **循環的な書き込みでの batch-while-resident デッドロック。** resident を開いたまま `batch` でシート横断リングの締めくくりの脚を書くと、CPU 100% でデッドロックする。リングのセルに対する単一の `set` でさえハングすることがある。対処: resident を閉じ、§Write-order surgery の通り2パスでリングを書く。non-resident の単一ヒアドキュメントのみが安全な形である。
+- **`view html` でのシート横断キャッシュ値の陳腐化。** 上流と同じシーケンスで書かれた下流は `0` をキャッシュする。Excel は開いたときに解決するが、HTML プレビューはしない。連鎖の後、下流すべてを non-resident で再 set すること（§ビルド順序とキャッシュドリフト）。
+- **`NPV()` / `XNPV()` は正しく評価・キャッシュされる。** エバリュエーターは両方（同一シート・シート横断とも）を計算し、書き換えは不要。`SUMPRODUCT(values/(1+rate)^periods)` は依然として監査可読性のためのオプションの代替であり、キャッシュの回避策ではない。
+- **感応度グリッドのビルド順序は依然として重要。** FCF/WACC の入力が存在する前に書かれたグリッドセルは空の入力に対して評価され、誤った/空欄の値をキャッシュしてしまう可能性がある。まず FCF＋WACC＋DCF を構築し、次にグリッドを別の non-resident batch で構築し、検証する（`jq '.data.results[0].format.cachedValue'`）。これは順序の規律の問題であり、エバリュエーターの限界ではない。
+- **`BS.Cash` は常に CF の期末現金と等しい**（Y1 を含む: `BS.Cash = 'Cash Flow'!B19`）。独立したプラグや Assumptions 参照には決してしない — プラグされた `BS.Cash` はバランスエラーを隠してしまう。
+- **Year 2 以降の `Opening Cash` = 前期の `Ending Cash`**（`C17=B19`、`D17=C19`）。独立した Y2以降の opening-cash 入力は BS からサイレントにずれていく。
+- **ウォーターフォールチャートの「合計」バー。** `chartType=waterfall` はプログラム的に合計をマークできない — `colors=` の慣習を使う（濃色＝合計、中間色＝プラス、赤＝マイナス）。`help xlsx chart` を参照。
+- **`SharesOut` が数式の場合の DCF 一株当たり値。** `=BasicShares + OptionPool × ExerciseAssumption` → 青字の前提条件セルを追加し、`SharesOut` 名前付き範囲を生の入力ではなく計算済みセルに向ける。
 
-## Help pointer
+## ヘルプへのポインタ
 
-When in doubt: `officecli help xlsx [element] [--json]`. Help is the authoritative schema; this skill is the decision guide for financial-modeling deltas.
+迷ったときは: `officecli help xlsx [element] [--json]`。ヘルプが権威あるスキーマであり、本スキルは財務モデリングの差分に関する意思決定ガイドである。
