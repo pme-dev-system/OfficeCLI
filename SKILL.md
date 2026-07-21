@@ -1,15 +1,15 @@
 ---
 name: officecli
-description: Create, analyze, proofread, and modify Office documents (.docx, .xlsx, .pptx) using the officecli CLI tool. Use when the user wants to create, inspect, check formatting, find issues, add charts, or modify Office documents.
+description: officecli CLI ツールを使って Office 文書（.docx, .xlsx, .pptx）の作成、分析、校正、変更を行います。ユーザーが Office 文書を作成、検査、書式チェック、問題の発見、チャートの追加、変更をしたい場合に使用してください。
 ---
 
 # officecli
 
-AI-friendly CLI for .docx, .xlsx, .pptx. Single binary, no dependencies, no Office installation needed.
+.docx、.xlsx、.pptx 向けの AI フレンドリーな CLI。単一バイナリ、依存関係なし、Office のインストール不要。
 
-## Install
+## インストール
 
-If `officecli` is not installed:
+`officecli` がインストールされていない場合：
 
 ```bash
 # macOS / Linux
@@ -19,68 +19,68 @@ curl -fsSL https://d.officecli.ai/install.sh | bash
 irm https://d.officecli.ai/install.ps1 | iex
 ```
 
-Verify with `officecli --version`. If still not found after install, open a new terminal.
+`officecli --version` で確認してください。インストール後も見つからない場合は、新しいターミナルを開いてください。
 
 ---
 
-## Strategy
+## 戦略
 
-**L1 (read) → L2 (DOM edit) → L3 (raw XML)**. Always prefer higher layers. Add `--json` for structured output.
+**L1（読み取り）→ L2（DOM 編集）→ L3（生 XML）**。常により上位のレイヤーを優先してください。構造化出力には `--json` を追加します。
 
-**Before doc work, check Specialized Skills** (bottom of this file). Fundraising decks, academic papers, financial models, dashboards, and Morph animations need their own skill loaded first — `load_skill` once, then proceed.
+**文書作業の前に、専門スキル（このファイルの末尾）を確認してください。** 資金調達用デック、学術論文、財務モデル、ダッシュボード、Morph アニメーションはそれぞれ専用のスキルを先にロードする必要があります — `load_skill` を一度実行してから進めてください。
 
 ---
 
-## Help System (IMPORTANT)
+## ヘルプシステム（重要）
 
-**When unsure about property names, value formats, or command syntax, ALWAYS run help instead of guessing.** One help query beats guess-fail-retry loops.
+**プロパティ名、値の形式、コマンド構文について不明な場合は、推測せずに常にヘルプを実行してください。** 1 回のヘルプ照会は、推測→失敗→再試行のループより優れています。
 
-`officecli help` ≡ `officecli --help`, and `officecli <cmd> --help` ≡ `officecli help <cmd>` — same content.
+`officecli help` ≡ `officecli --help`、そして `officecli <cmd> --help` ≡ `officecli help <cmd>` — 内容は同じです。
 
 ```bash
-officecli help                                  # All commands + global options + schema entry points
-officecli help docx                             # List all docx elements
-officecli help docx paragraph                   # Full schema: properties, aliases, examples, readbacks
-officecli help docx set paragraph               # Verb-filtered: only props usable with `set`
-officecli help docx paragraph --json            # Structured schema (machine-readable)
+officecli help                                  # 全コマンド + グローバルオプション + スキーマのエントリーポイント
+officecli help docx                             # docx の全要素を一覧表示
+officecli help docx paragraph                   # 完全なスキーマ：プロパティ、エイリアス、例、読み戻し値
+officecli help docx set paragraph               # 動詞フィルタ済み：`set` で使用可能なプロパティのみ
+officecli help docx paragraph --json            # 構造化スキーマ（機械可読）
 ```
 
-Format aliases: `word`→`docx`, `excel`→`xlsx`, `ppt`/`powerpoint`→`pptx`. Verbs: `add`, `set`, `get`, `query`, `remove`. MCP exposes the same schema via the single `command` string param: `{"command":"help docx paragraph"}` (not a structured `{"format":...,"type":...}` object — the MCP tool has exactly one param, `command`, and passes it through to the CLI verbatim).
+フォーマットエイリアス：`word`→`docx`、`excel`→`xlsx`、`ppt`/`powerpoint`→`pptx`。動詞：`add`、`set`、`get`、`query`、`remove`。MCP は同一のスキーマを単一の `command` 文字列パラメータ経由で公開します：`{"command":"help docx paragraph"}`（構造化された `{"format":...,"type":...}` オブジェクトではありません — MCP ツールはパラメータを `command` の 1 つだけ持ち、CLI へそのまま渡します）。
 
 ---
 
-## Performance: Resident Mode
+## パフォーマンス：レジデントモード
 
-**Every command auto-starts a resident on first access** (60s idle timeout) — file-lock conflicts are automatically avoided. Explicit `open`/`close` is still recommended for longer sessions (12min idle):
+**すべてのコマンドは初回アクセス時に自動でレジデント（常駐プロセス）を起動します**（60 秒のアイドルタイムアウト）— ファイルロックの競合は自動的に回避されます。長いセッションでは明示的な `open`/`close`（12 分のアイドルタイムアウト）を引き続き推奨します：
 ```bash
-officecli open report.docx       # explicitly keep in memory
-officecli set report.docx ...    # no file I/O overhead
-officecli close report.docx      # save and release
+officecli open report.docx       # 明示的にメモリに保持
+officecli set report.docx ...    # ファイル I/O のオーバーヘッドなし
+officecli close report.docx      # 保存して解放
 ```
 
-Opt out of auto-start: `OFFICECLI_NO_AUTO_RESIDENT=1`.
+自動起動をオプトアウトする場合：`OFFICECLI_NO_AUTO_RESIDENT=1`。
 
-**Flush only at the non-officecli boundary.** officecli's own reads (`get`/`query`/`view`/`dump`) always see your latest edits, so you never need to save mid-workflow. Run `save` (keeps the resident) or `close` (flush + release) only **before a non-officecli program reads the file** — python-docx/openpyxl, Word, a renderer, delivery/upload. (Idle sessions auto-flush within seconds; `OFFICECLI_RESIDENT_FLUSH=each` makes every mutation flush before returning.)
+**フラッシュは officecli 以外との境界でのみ行ってください。** officecli 自身の読み取り（`get`/`query`/`view`/`dump`）は常に最新の編集内容を参照するため、ワークフロー途中で保存する必要はありません。`save`（レジデントは維持）または `close`（フラッシュして解放）を実行するのは、**officecli 以外のプログラムがファイルを読み込む直前**のみです — python-docx/openpyxl、Word、レンダラー、配信/アップロードなど。（アイドル状態のセッションは数秒以内に自動フラッシュされます。`OFFICECLI_RESIDENT_FLUSH=each` を設定すると、すべての変更が返却前にフラッシュされます。）
 
 ---
 
-## Quick Start
+## クイックスタート
 
-**PPT:**
+**PPT：**
 ```bash
 officecli create slides.pptx
 officecli add slides.pptx / --type slide --prop title="Q4 Report" --prop background=1A1A2E
 officecli add slides.pptx '/slide[1]' --type shape --prop text="Revenue grew 25%" --prop x=2cm --prop y=5cm --prop font=Arial --prop size=24 --prop color=FFFFFF
 ```
 
-**Word:**
+**Word：**
 ```bash
 officecli create report.docx
 officecli add report.docx /body --type paragraph --prop text="Executive Summary" --prop style=Heading1
 officecli add report.docx /body --type paragraph --prop text="Revenue increased by 25% year-over-year."
 ```
 
-**Excel:**
+**Excel：**
 ```bash
 officecli create data.xlsx
 officecli set data.xlsx /Sheet1/A1 --prop value="Name" --prop bold=true
@@ -89,56 +89,56 @@ officecli set data.xlsx /Sheet1/A2 --prop value="Alice"
 
 ---
 
-## L1: Create, Read & Inspect
+## L1：作成・読み取り・検査
 
 ```bash
-officecli create <file>               # Create blank .docx/.xlsx/.pptx (type from extension)
+officecli create <file>               # 空の .docx/.xlsx/.pptx を作成（拡張子からタイプを判定）
 officecli view <file> <mode>          # outline | stats | issues | text | annotated | html
-officecli get <file> <path> --depth N # Get a node and its children [--json]
-officecli query <file> <selector>     # CSS-like query
-officecli validate <file>             # Validate against OpenXML schema
+officecli get <file> <path> --depth N # ノードとその子要素を取得 [--json]
+officecli query <file> <selector>     # CSS ライクなクエリ
+officecli validate <file>             # OpenXML スキーマに対して検証
 ```
 
-### view modes
+### view モード
 
-| Mode | Description | Useful flags |
+| モード | 説明 | 便利なフラグ |
 |------|-------------|-------------|
-| `outline` | Document structure | |
-| `stats` | Statistics (pages, words, shapes) | |
-| `issues` | Formatting/content/structure problems | `--type format\|content\|structure`, `--limit N` |
-| `text` | Plain text extraction | `--start N --end N`, `--max-lines N` |
-| `annotated` | Text with formatting annotations | |
-| `html` | Static HTML snapshot — same renderer as `watch`, no server needed | `--browser`, `--page N` (docx), `--start N --end N` (pptx) |
-| `screenshot` / `svg` / `pdf` / `forms` | PNG via headless browser / SVG (pptx slide) / PDF via exporter plugin / form-fields JSON via format-handler plugin | `-o`, `--screenshot-width/-height`, pptx `--grid N` |
+| `outline` | 文書構造 | |
+| `stats` | 統計情報（ページ数、単語数、シェイプ数） | |
+| `issues` | フォーマット/コンテンツ/構造上の問題 | `--type format\|content\|structure`、`--limit N` |
+| `text` | プレーンテキスト抽出 | `--start N --end N`、`--max-lines N` |
+| `annotated` | フォーマット注釈付きテキスト | |
+| `html` | 静的 HTML スナップショット — `watch` と同じレンダラー、サーバー不要 | `--browser`、`--page N`（docx）、`--start N --end N`（pptx） |
+| `screenshot` / `svg` / `pdf` / `forms` | ヘッドレスブラウザ経由の PNG / SVG（pptx スライド）/ エクスポータプラグイン経由の PDF / フォーマットハンドラプラグイン経由のフォームフィールド JSON | `-o`、`--screenshot-width/-height`、pptx の `--grid N` |
 
-Use `view html` for one-shot snapshots (CI artifacts, archival, diffing); use `watch` when you need live refresh or browser-side click-to-select.
+一度限りのスナップショット（CI アーティファクト、アーカイブ、差分比較）には `view html` を使用し、ライブリフレッシュやブラウザ側のクリック選択が必要な場合は `watch` を使用してください。
 
 ### get
 
-Any XML path via element localName. Use `--depth N` to expand children. Add `--json` for structured output. Default text output is grep-friendly: `path (type) "text" key=val key=val ...`
+要素の localName による任意の XML パス。子要素を展開するには `--depth N` を使用します。構造化出力には `--json` を追加します。デフォルトのテキスト出力は grep しやすい形式です：`path (type) "text" key=val key=val ...`
 
 ```bash
 officecli get report.docx '/body/p[3]' --depth 2 --json
-officecli get slides.pptx '/slide[1]' --depth 1          # list all shapes on slide 1
+officecli get slides.pptx '/slide[1]' --depth 1          # スライド 1 の全シェイプを一覧表示
 officecli get data.xlsx '/Sheet1/B2' --json
 ```
 
-### Stable ID Addressing
+### 安定 ID アドレッシング
 
-Elements with stable IDs return `@attr=value` paths instead of positional indices. Prefer these in multi-step workflows — positional indices shift on insert/delete, stable IDs do not.
+安定 ID を持つ要素は、位置インデックスではなく `@attr=value` パスを返します。複数ステップのワークフローではこちらを優先してください — 位置インデックスは挿入/削除で変動しますが、安定 ID は変動しません。
 
 ```
-/slide[1]/shape[@id=550950021]                    # PPT shape
-/slide[1]/table[@id=1388430425]/tr[1]/tc[2]       # PPT table
-/body/p[@paraId=1A2B3C4D]                         # Word paragraph
-/comments/comment[@commentId=1]                    # Word comment
+/slide[1]/shape[@id=550950021]                    # PPT シェイプ
+/slide[1]/table[@id=1388430425]/tr[1]/tc[2]       # PPT 表
+/body/p[@paraId=1A2B3C4D]                         # Word 段落
+/comments/comment[@commentId=1]                    # Word コメント
 ```
 
-PPT also accepts `@name=` (e.g. `shape[@name=Title 1]`), with morph `!!` prefix awareness. Elements without stable IDs (slide, run, tr/tc, row) fall back to positional indices.
+PPT は `@name=`（例：`shape[@name=Title 1]`）も受け付け、morph の `!!` プレフィックスも認識します。安定 ID を持たない要素（slide、run、tr/tc、row）は位置インデックスにフォールバックします。
 
 ### query
 
-CSS-like selectors: `[attr=value]`, `[attr!=value]`, `[attr~=text]`, `[attr>=value]`, `[attr<=value]`, `:contains("text")`, `:empty`, `:has(formula)`, `:no-alt`. Boolean `and`/`or` supported across `query`/`set`/`remove`: `cell[value>5000 or value<100]`, `cell[(type=Number or type=Date) and value>0]`. Excel row-by-column-name: `Sheet1!row[Salary>5000]`. `set` accepts selectors and Excel-native paths (parity with `get`/`query`). Bare unscoped selectors rejected on `set`/`remove`.
+CSS ライクなセレクタ：`[attr=value]`、`[attr!=value]`、`[attr~=text]`、`[attr>=value]`、`[attr<=value]`、`:contains("text")`、`:empty`、`:has(formula)`、`:no-alt`。ブール演算子 `and`/`or` は `query`/`set`/`remove` にわたってサポートされています：`cell[value>5000 or value<100]`、`cell[(type=Number or type=Date) and value>0]`。Excel の列名による行指定：`Sheet1!row[Salary>5000]`。`set` はセレクタと Excel ネイティブパスの両方を受け付けます（`get`/`query` とのパリティ）。裸の（スコープなしの）セレクタは `set`/`remove` では拒否されます。
 
 ```bash
 officecli query report.docx 'paragraph[style=Normal] > run[font!=Arial]'
@@ -147,43 +147,43 @@ officecli query slides.pptx 'shape[fill=FF0000]'
 
 ---
 
-## Watch & Interactive Selection
+## Watch とインタラクティブ選択
 
-Live HTML preview that auto-refreshes on every file change. Browsers can click / shift-click / box-drag to select shapes; the CLI can read the current browser selection and act on it.
+ファイルが変更されるたびに自動でリフレッシュされるライブ HTML プレビュー。ブラウザ上でクリック / シフトクリック / ボックスドラッグによってシェイプを選択でき、CLI は現在のブラウザ選択状態を読み取って処理できます。
 
 ```bash
-officecli watch <file> [--port N]      # Start preview server (default port 26315)
-officecli unwatch <file>               # Stop
-officecli goto <file> <path>           # Scroll watching browser(s) to element (docx: p / table / tr / tc)
+officecli watch <file> [--port N]      # プレビューサーバーを起動（デフォルトポート 26315）
+officecli unwatch <file>               # 停止
+officecli goto <file> <path>           # watch 中のブラウザを要素へスクロール（docx：p / table / tr / tc）
 ```
 
-Open the printed `http://localhost:N` URL. Click to select; shift/cmd/ctrl+click to multi-select; drag from empty space to box-select. PPT/Word use blue outline; Excel uses native-style green selection (double-click cell to edit inline; drag a chart to reposition).
+出力された `http://localhost:N` の URL を開いてください。クリックで選択、shift/cmd/ctrl+クリックで複数選択、空白部分からドラッグでボックス選択できます。PPT/Word は青いアウトライン、Excel はネイティブ風の緑色の選択表示を使用します（セルをダブルクリックでインライン編集、チャートをドラッグで再配置）。
 
-### `get <file> selected` — read what the user clicked
+### `get <file> selected` — ユーザーのクリック内容を読み取る
 
 ```bash
 officecli get <file> selected [--json]
 ```
 
-Returns DocumentNodes for whatever is currently selected. Empty result if nothing selected. Exit code != 0 if no watch is running.
+現在選択されているものの DocumentNodes を返します。何も選択されていない場合は空の結果になります。watch が実行されていない場合、終了コードは 0 以外になります。
 
 ```bash
-# User clicks shapes in the browser, then asks "make these red"
+# ユーザーがブラウザでシェイプをクリックし、「これらを赤くして」と指示した場合
 PATHS=$(officecli get deck.pptx selected --json | jq -r '.data.Results[].path')
 for p in $PATHS; do officecli set deck.pptx "$p" --prop fill=FF0000; done
 ```
 
-### Key properties
+### 主要な特性
 
-- **Selection survives file edits.** Paths use stable `@id=` form.
-- **All connected browsers share one selection.** Last-write-wins.
-- **Same-file single-watch.** A given file can have only one watch process at a time.
-- **Group shapes select as a whole.** Drilling into individual children of a group is not supported in v1.
-- **Coverage:** `.pptx` shapes/pictures/tables/charts/connectors/groups; `.docx` top-level paragraphs and tables. Inherited layout/master decorations and Word nested elements (table cells, run-level) are not addressable. **`.xlsx` does not emit `data-path`** — `mark`/`selection` on xlsx always resolve `stale=true` (v2 candidate).
+- **選択状態はファイル編集後も保持されます。** パスは安定した `@id=` 形式を使用します。
+- **接続中の全ブラウザが 1 つの選択状態を共有します。** 最後の書き込みが優先されます。
+- **同一ファイルにつき同時に 1 つの watch のみ。** 1 つのファイルにつき watch プロセスは同時に 1 つだけです。
+- **グループシェイプは全体として選択されます。** グループ内の個々の子要素へのドリルダウンは v1 ではサポートされていません。
+- **カバレッジ：** `.pptx` のシェイプ/画像/表/チャート/コネクタ/グループ、`.docx` のトップレベル段落と表。継承されたレイアウト/マスターの装飾や Word のネストされた要素（表セル、ラン レベル）はアドレス指定できません。**`.xlsx` は `data-path` を出力しません** — xlsx 上の `mark`/`selection` は常に `stale=true` に解決されます（v2 の候補機能）。
 
-### Marks — edit proposals waiting for review
+### マーク — レビュー待ちの編集提案
 
-Use `mark` when changes need human review BEFORE they hit the file. Marks live in the watch process only; a separate `set` pipeline applies accepted ones. For one-shot changes use `set` directly; for permanent file annotations use `add --type comment` (Word native).
+変更をファイルに反映する**前に**人間によるレビューが必要な場合は `mark` を使用してください。マークは watch プロセス内にのみ存在し、承認されたものは別の `set` パイプラインで適用されます。一度限りの変更には `set` を直接使用し、永続的なファイル注釈には `add --type comment`（Word ネイティブ）を使用してください。
 
 ```bash
 officecli mark <file> <path> [--prop find=... color=... note=... tofix=... regex=true] [--json]
@@ -191,80 +191,80 @@ officecli unmark <file> [--path <p> | --all] [--json]
 officecli get-marks <file> [--json]
 ```
 
-Props: `find` (literal or regex when `regex=true`; raw form `find='r"[abc]"'`), `color` (hex / `rgb(...)` / 22 named whitelist), `note`, `tofix` (drives apply pipeline). **Path** must be `data-path` format from watch HTML — see subskills for full pipeline.
+プロパティ：`find`（リテラルまたは `regex=true` 時は正規表現。生の形式：`find='r"[abc]"'`）、`color`（16進数 / `rgb(...)` / 22 種類の名前付きホワイトリスト）、`note`、`tofix`（適用パイプラインを駆動）。**パス**は watch HTML 由来の `data-path` 形式である必要があります — 完全な適用パイプラインについてはサブスキルを参照してください。
 
 ---
 
-## L2: DOM Operations
+## L2：DOM 操作
 
-### set — modify properties
+### set — プロパティを変更
 
 ```bash
 officecli set <file> <path> --prop key=value [--prop ...]
 ```
 
-**Any XML attribute is settable** via element path (found via `get --depth N`) — even attributes not currently present. Without `find=`, `set` applies format to the entire element.
+**任意の XML 属性は要素パス経由で設定可能です**（`get --depth N` で調査）— 現在存在しない属性も設定できます。`find=` を指定しない場合、`set` は要素全体にフォーマットを適用します。
 
-**Value formats:**
+**値の形式：**
 
-| Type | Format | Examples |
+| タイプ | 形式 | 例 |
 |------|--------|---------|
-| Colors | Hex (with/without `#`), named, RGB, theme | `FF0000`, `#FF0000`, `red`, `rgb(255,0,0)`, `accent1`..`accent6` |
-| Spacing | Unit-qualified | `12pt`, `0.5cm`, `1.5x`, `150%` |
-| Dimensions | EMU or suffixed | `914400`, `2.54cm`, `1in`, `72pt`, `96px` |
+| 色 | 16進数（`#` あり/なし）、色名、RGB、テーマ | `FF0000`、`#FF0000`、`red`、`rgb(255,0,0)`、`accent1`..`accent6` |
+| 間隔 | 単位指定 | `12pt`、`0.5cm`、`1.5x`、`150%` |
+| 寸法 | EMU または接尾辞付き | `914400`、`2.54cm`、`1in`、`72pt`、`96px` |
 
-**Dotted-attr aliases** — `font.<attr>` forms accepted on shape/run/paragraph/table/row/cell/section/styles, e.g. `--prop font.color=red --prop font.bold=true --prop font.size=14pt`. Run `officecli help <fmt> <element>` for the full list.
+**ドット区切り属性エイリアス** — `font.<attr>` 形式は shape/run/paragraph/table/row/cell/section/styles で受け付けられます。例：`--prop font.color=red --prop font.bold=true --prop font.size=14pt`。完全なリストは `officecli help <fmt> <element>` を実行してください。
 
-### find — format or replace matched text
+### find — 一致したテキストのフォーマットまたは置換
 
-Use top-level `--find` / `--replace` on `set` (and `--find` on `query`). Legacy `--prop find=X` still works but emits a hint.
+`set`（および `query` の `--find`）ではトップレベルの `--find` / `--replace` を使用してください。旧来の `--prop find=X` も引き続き動作しますが、ヒントが表示されます。
 
 ```bash
-# Format matched text (auto-splits runs)
+# 一致したテキストをフォーマット（ランを自動分割）
 officecli set doc.docx '/body/p[1]' --find weather --prop bold=true --prop color=red
 
-# Regex matching (regex= still a prop flag)
+# 正規表現マッチング（regex= は依然としてプロパティフラグ）
 officecli set doc.docx '/body/p[1]' --find '\d+%' --prop regex=true --prop color=red
 
-# Replace text (use `/` for whole-document scope)
+# テキストを置換（文書全体をスコープにする場合は `/` を使用）
 officecli set doc.docx / --find draft --replace final
 
-# docx: tracked Find&Replace
+# docx：変更履歴付き検索/置換
 officecli set doc.docx / --find draft --replace final --prop revision.author=Alice
 
-# PPT — same syntax, different paths
+# PPT — 同じ構文、パスのみ異なる
 officecli set slides.pptx / --find draft --replace final
 ```
 
-**Path controls search scope:** `/` = whole document, `/body/p[1]` or `/slide[N]/shape[M]` = specific element, `/header[1]` / `/footer[1]` = headers/footers.
+**パスが検索範囲を制御します：** `/` = 文書全体、`/body/p[1]` または `/slide[N]/shape[M]` = 特定の要素、`/header[1]` / `/footer[1]` = ヘッダー/フッター。
 
-**Notes:**
-- Case-sensitive by default. Case-insensitive: `--prop 'find=(?i)error' --prop regex=true`
-- Matches work across run boundaries
-- No match = silent success. `--json` includes `"matched": N`
-- **Excel:** only `find` + `replace` supported (no find + format props)
+**注意事項：**
+- デフォルトでは大文字小文字を区別します。区別しない場合：`--prop 'find=(?i)error' --prop regex=true`
+- マッチはラン境界をまたいで機能します
+- マッチしない場合は静かに成功扱いになります。`--json` には `"matched": N` が含まれます
+- **Excel：** `find` + `replace` のみサポート（find + フォーマットプロパティの組み合わせは非対応）
 
-### add — add elements or clone
+### add — 要素の追加またはクローン
 
 ```bash
 officecli add <file> <parent> --type <type> [--prop ...]
-officecli add <file> <parent> --type <type> --after <path> [--prop ...]   # insert after anchor
-officecli add <file> <parent> --type <type> --before <path> [--prop ...]  # insert before anchor
-officecli add <file> <parent> --type <type> --index N [--prop ...]        # 0-based position (legacy)
-officecli add <file> <parent> --from <path>                               # clone existing element
+officecli add <file> <parent> --type <type> --after <path> [--prop ...]   # アンカーの後に挿入
+officecli add <file> <parent> --type <type> --before <path> [--prop ...]  # アンカーの前に挿入
+officecli add <file> <parent> --type <type> --index N [--prop ...]        # 0-based の位置（レガシー）
+officecli add <file> <parent> --from <path>                               # 既存要素をクローン
 ```
 
-`--after`, `--before`, `--index` are mutually exclusive. No position flag = append to end.
+`--after`、`--before`、`--index` は互いに排他的です。位置フラグを指定しない場合は末尾に追加されます。
 
-**Element types (with aliases):**
+**要素タイプ（エイリアス付き）：**
 
-| Format | Types |
+| フォーマット | タイプ |
 |--------|-------|
-| **pptx** | slide (incl. hidden), shape (font.latin/ea/cs, direction=rtl, underline.color, highlight=COLOR (Add/Set/Get/HTML preview), effective.X+effective.X.src; arrow alias for rightArrow; slideMaster/slideLayout typed add/set/remove), picture (SVG, brightness/contrast/glow/shadow, rotation, link, tooltip), chart (direction=rtl, pieOfPie, barOfPie, axisLine/gridline per-attr setters, animation+chartBuild=byCategory|bySeries, line dropLines/hiLowLines/upDownBars, anchor=x,y,w,h shorthand), table (cell direction=rtl, fill/background, built-in PowerPoint style catalogue, /col[C] get + swap/copyFrom, row/col Move/CopyFrom), row (tr), connector (from/to accept full-path `@name=`/`@id=` forms — bare `@name=Foo` is rejected, must be `/slide[N]/shape[@name=Foo]` — startshape/endshape SetByPath; edge-to-edge anchoring by default, fromSide/toSide to force an edge, fromIdx/toIdx for raw cxn index), group (link, tooltip, deep walk by get/query/add/remove, ungroup=true dissolves back to slide-absolute), align/distribute (targets= accepts shape[@id=N] paths, not just positional), video/audio (loop, autoStart alias), equation, notes (direction=rtl, lang), comment (legacy + modern p188 threaded round-trip), animation (15 emphasis + 16 exit presets, multi-effect chains, motion-path presets, repeat/restart/autoReverse, chart animations), transition (12 p15 presets + morph/p14), paragraph (para), run, zoom, ole (preview=, full dump round-trip via add-part+raw-set), placeholder (phType=...), model3d (rotation=ax,ay,az; full dump round-trip), smartart (dump round-trip via add-part), diagram (add-only mermaid → native shapes or rendered image, `--type diagram`/`flowchart`). |
-| **docx** | paragraph (direction/font.latin/ea/cs, bold.cs/italic.cs/size.cs, lang.latin/ea/cs, wordWrap, framePr.\*, tabs shorthand), run (lang slots, direction, underline.color, position half-pts, **revision.type=ins\|del\|format\|moveFrom\|moveTo + revision.action=accept\|reject** with .author/.date — bare `@author=`/`@type=` selector on `set /revision[...]` for filtered accept/reject, but `query 'revision[...]'` needs the dotted `revision.author=`/`revision.type=` form; move+revision is run-level paths only, not paragraph-level; **range=START:END** on a paragraph/shape path formats a char span by explicit 0-based half-open offset instead of addressing a run — the offset sibling of find=), table (direction=rtl, hMerge, cantSplit on row/nowrap on cell (both add+set), **virtual column ops**: add/remove/move/copyfrom on /body/tbl[N]/col), row (tr), cell (td), image, header/footer (direction), section (pageNumFmt full enum, direction=rtl, rtlGutter, pgBorders=box), bookmark, comment, footnote, endnote, formfield, sdt, chart, equation, field (28 types), hyperlink, style (direction, indents, pbdr, lineSpacing on Add/Set), toc, watermark, break, ole, **num/abstractNum/lvl**, **tab**, **textbox/shape** (add-mostly — Get returns raw XML preview only, no structured readback; Set is limited to width/height/geometry/fill/line.\*; position is `anchor.x`/`anchor.y` not bare x/y; **textbox-only** `textDirection`/rotation/gradient/shadow — docx shape itself has neither rotation nor gradient), embedded **OLE round-trip on dump→batch**, **diagram** (add-only mermaid → native shapes or rendered image, `--type diagram`/`flowchart`, no x/y at add-time — reposition via `set /body/group[N]`). docDefaults.rtl, autoHyphenation, `get /` exposes locale + /comments /footnotes /endnotes. `create --minimal` for raw OOXML scaffolding. |
-| **xlsx** | sheet (visible/hidden/veryHidden, print margins, printTitleRows/Cols, rightToLeft sheetView, cascade-aware rename), row (c{N}= cell-content shorthand; add accepts --from /Sheet/col[L]; formula-ref rewrite on insert), col (formula-ref rewrite, named-range follow on move), cell (type=richtext+runs, merge=range/sweep, direction=rtl, phonetic; **--shift left\|up on remove, shift=right\|down on add** — Excel UI dialog parity; formula auto-detect; OFFSET/INDIRECT in calc), chart (per-axis RTL/title, anchor=x,y,w,h, pareto), image (SVG), comment (direction=rtl), table (listobject), namedrange (definedname, volatile, `[@name=X]`; formula-body inlined at parse), pivottable (cache CoW + cross-pivot sharing, labelFilter=field:type:value add-time-only, topN=integer add-time-only, fillDownLabels is an alias of repeatLabels not a separate feature, calculatedField), sparkline, validation, autofilter, shape, textbox, CF (databar/colorscale/iconset/formulacf/cellIs/topN/aboveAverage), ole, csv. Query supports `merge`/`mergedrange`. Workbook: password. Shape selector enumerates leaves inside grpSp. |
+| **pptx** | slide（非表示を含む）、shape（font.latin/ea/cs、direction=rtl、underline.color、highlight=COLOR（Add/Set/Get/HTML プレビュー）、effective.X+effective.X.src；rightArrow のエイリアス arrow；slideMaster/slideLayout の型付き add/set/remove）、picture（SVG、brightness/contrast/glow/shadow、rotation、link、tooltip）、chart（direction=rtl、pieOfPie、barOfPie、軸線/グリッド線の属性別セッター、animation+chartBuild=byCategory|bySeries、line の dropLines/hiLowLines/upDownBars、anchor=x,y,w,h 省略記法）、table（cell の direction=rtl、fill/background、PowerPoint 組み込みスタイルカタログ、/col[C] get + swap/copyFrom、row/col の Move/CopyFrom）、row（tr）、connector（from/to は完全パスの `@name=`/`@id=` 形式を受け付ける — 裸の `@name=Foo` は拒否され、`/slide[N]/shape[@name=Foo]` の形式が必須；startshape/endshape の SetByPath；デフォルトでエッジ間アンカリング、エッジを強制する場合は fromSide/toSide、生の cxn インデックスには fromIdx/toIdx）、group（link、tooltip、get/query/add/remove によるディープウォーク、ungroup=true でスライド絶対座標に解消）、align/distribute（targets= は位置指定だけでなく shape[@id=N] パスも受け付ける）、video/audio（loop、autoStart のエイリアス）、equation、notes（direction=rtl、lang）、comment（レガシー + p188 モダンスレッド化の往復対応）、animation（15 種の強調 + 16 種の終了プリセット、複数エフェクトチェーン、モーションパスプリセット、repeat/restart/autoReverse、チャートアニメーション）、transition（12 種の p15 プリセット + morph/p14）、paragraph（para）、run、zoom、ole（preview=、add-part+raw-set 経由の完全ダンプ往復）、placeholder（phType=...）、model3d（rotation=ax,ay,az；完全ダンプ往復）、smartart（add-part 経由のダンプ往復）、diagram（追加専用、mermaid → ネイティブシェイプまたはレンダリング画像、`--type diagram`/`flowchart`）。 |
+| **docx** | paragraph（direction/font.latin/ea/cs、bold.cs/italic.cs/size.cs、lang.latin/ea/cs、wordWrap、framePr.\*、tabs 省略記法）、run（lang スロット、direction、underline.color、position ハーフポイント、**revision.type=ins\|del\|format\|moveFrom\|moveTo + revision.action=accept\|reject**（.author/.date 付き）— フィルタ済み accept/reject には `set /revision[...]` 上の裸の `@author=`/`@type=` セレクタを使用するが、`query 'revision[...]'` はドット区切りの `revision.author=`/`revision.type=` 形式が必要；move+revision はラン レベルのパスのみで段落レベルでは不可；**range=START:END** は段落/シェイプ パス上で、ラン をアドレス指定する代わりに明示的な 0-based の半開区間オフセットで文字範囲をフォーマットする — find= の兄弟にあたるオフセット指定）、table（direction=rtl、hMerge、row の cantSplit / cell の nowrap（Add・Set 両対応）、**仮想列操作**：/body/tbl[N]/col への add/remove/move/copyfrom）、row（tr）、cell（td）、image、header/footer（direction）、section（pageNumFmt の完全な列挙、direction=rtl、rtlGutter、pgBorders=box）、bookmark、comment、footnote、endnote、formfield、sdt、chart、equation、field（28 種類）、hyperlink、style（direction、indents、pbdr、Add/Set 上の lineSpacing）、toc、watermark、break、ole、**num/abstractNum/lvl**、**tab**、**textbox/shape**（主に追加専用 — Get は生の XML プレビューのみを返し、構造化された読み戻しは不可；Set は width/height/geometry/fill/line.\* に限定；位置は裸の x/y ではなく `anchor.x`/`anchor.y`；**textbox のみ** `textDirection`/rotation/gradient/shadow — docx の shape 自体には rotation も gradient もありません）、埋め込み **OLE の dump→batch 往復**、**diagram**（追加専用、mermaid → ネイティブシェイプまたはレンダリング画像、`--type diagram`/`flowchart`、追加時に x/y なし — `set /body/group[N]` で再配置）。docDefaults.rtl、autoHyphenation、`get /` はロケール + /comments /footnotes /endnotes を公開。生の OOXML スキャフォールディングには `create --minimal`。 |
+| **xlsx** | sheet（visible/hidden/veryHidden、印刷余白、printTitleRows/Cols、RTL の sheetView、カスケード対応のリネーム）、row（c{N}= セル内容の省略記法；add は `--from /Sheet/col[L]` を受け付ける；挿入時の数式参照リライト）、col（数式参照リライト、移動時の名前付き範囲追従）、cell（type=richtext+runs、merge=range/sweep、direction=rtl、phonetic；**remove 時は --shift left\|up、add 時は shift=right\|down** — Excel UI ダイアログとのパリティ；数式自動検出；計算時の OFFSET/INDIRECT）、chart（軸別 RTL/タイトル、anchor=x,y,w,h、パレート）、image（SVG）、comment（direction=rtl）、table（listobject）、namedrange（definedname、volatile、`[@name=X]`；パース時に数式本体をインライン化）、pivottable（キャッシュの CoW + クロスピボット共有、labelFilter=field:type:value は追加時のみ、topN=integer は追加時のみ、fillDownLabels は repeatLabels のエイリアスであり別機能ではない、calculatedField）、sparkline、validation、autofilter、shape、textbox、CF（databar/colorscale/iconset/formulacf/cellIs/topN/aboveAverage）、ole、csv。Query は `merge`/`mergedrange` をサポート。ワークブック：password。Shape セレクタは grpSp 内の末端要素を列挙します。 |
 
-### Pivot tables (xlsx)
+### ピボットテーブル（xlsx）
 
 ```bash
 officecli add data.xlsx /Sheet1 --type pivottable \
@@ -273,9 +273,9 @@ officecli add data.xlsx /Sheet1 --type pivottable \
   --prop grandTotals=rows --prop subtotals=off --prop sort=asc
 ```
 
-Key props: `rows`, `cols`, `values` (Field:func[:showDataAs]), `filters`, `source`, `position`, `layout` (compact/outline/tabular), `repeatLabels`, `blankRows`, `aggregate`, `showDataAs` (percent_of_total/row/col, running_total), `grandTotals`, `subtotals`, `sort`. Aggregators: sum, count, average, max, min, product, stdDev, stdDevp, var, varp, countNums. Date columns auto-group. Run `officecli help xlsx pivottable` for full schema.
+主なプロパティ：`rows`、`cols`、`values`（Field:func[:showDataAs]）、`filters`、`source`、`position`、`layout`（compact/outline/tabular）、`repeatLabels`、`blankRows`、`aggregate`、`showDataAs`（percent_of_total/row/col、running_total）、`grandTotals`、`subtotals`、`sort`。集計関数：sum、count、average、max、min、product、stdDev、stdDevp、var、varp、countNums。日付列は自動でグループ化されます。完全なスキーマは `officecli help xlsx pivottable` を実行してください。
 
-### Document-level properties (all formats)
+### 文書レベルのプロパティ（全フォーマット共通）
 
 ```bash
 officecli set doc.docx / --prop docDefaults.font=Arial --prop docDefaults.fontSize=11pt
@@ -284,34 +284,34 @@ officecli set data.xlsx / --prop calc.mode=manual --prop calc.refMode=r1c1
 officecli set slides.pptx / --prop defaultFont=Arial --prop show.loop=true --prop print.what=handouts
 ```
 
-Run `officecli help <format> /` for all document-level properties (docDefaults, docGrid, CJK spacing, calc, print, show, theme, extended).
+全ての文書レベルプロパティ（docDefaults、docGrid、CJK 間隔、calc、print、show、theme、extended）は `officecli help <format> /` を実行してください。
 
-### Sort (xlsx)
+### ソート（xlsx）
 
 ```bash
 officecli set data.xlsx /Sheet1 --prop sort="C desc" --prop sortHeader=true
 officecli set data.xlsx '/Sheet1/A1:D100' --prop sort="A asc" --prop sortHeader=true
 ```
 
-Format: `COL DIR[, COL DIR ...]`. Rejects ranges with merged cells or formulas. Sidecar metadata (hyperlinks, comments, conditional formatting, drawings) follows rows automatically.
+形式：`COL DIR[, COL DIR ...]`。結合セルまたは数式を含む範囲は拒否されます。サイドカーメタデータ（ハイパーリンク、コメント、条件付き書式、図形描画）は行に自動で追従します。
 
-### Text-anchored insert (`--after find:X` / `--before find:X`)
+### テキストアンカー挿入（`--after find:X` / `--before find:X`）
 
-Locate an insertion point by text match within a paragraph. Inline types (run, picture, hyperlink) insert within the paragraph; block types (table, paragraph) auto-split it. PPT only supports inline.
+段落内のテキスト一致箇所を挿入位置として指定します。インライン型（run、picture、hyperlink）は段落内に挿入され、ブロック型（table、paragraph）は段落を自動分割します。PPT はインラインのみサポートします。
 
 ```bash
-# Word: inline run after matched text
+# Word：一致したテキストの後にインラインの run を挿入
 officecli add doc.docx '/body/p[1]' --type run --after find:weather --prop text=" (sunny)"
 
-# Word: block table after matched text (auto-splits paragraph)
+# Word：一致したテキストの後にブロックの table を挿入（段落を自動分割）
 officecli add doc.docx '/body/p[1]' --type table --after "find:First sentence." --prop rows=2 --prop cols=2
 ```
 
-### Clone
+### クローン
 
-`officecli add <file> / --from '/slide[1]'` — copies with all cross-part relationships.
+`officecli add <file> / --from '/slide[1]'` — すべてのクロスパート関係を含めてコピーします。
 
-### move, swap, remove
+### move、swap、remove
 
 ```bash
 officecli move <file> <path> [--to <parent>] [--index N] [--after <path>] [--before <path>]
@@ -319,13 +319,13 @@ officecli swap <file> <path1> <path2>
 officecli remove <file> '/body/p[4]'
 ```
 
-When using `--after` or `--before`, `--to` can be omitted — the target container is inferred from the anchor.
+`--after` または `--before` を使用する場合、`--to` は省略可能です — ターゲットのコンテナはアンカーから推測されます。
 
-### batch — multiple operations in one save cycle
+### batch — 1 回の保存サイクルで複数の操作を実行
 
-**Atomic by default (v1.0.137+):** every item still runs and is reported (so `N succeeded, M failed` stays meaningful and every failure surfaces), but if *any* item fails the whole batch rolls back — the file on disk is left byte-identical to before the batch ran (confirmed live in both standalone and resident mode). Use `--best-effort` to restore the old apply-what-succeeds behavior (useful for lossy `dump→batch` replays where losing the whole thing over one unsupported item is worse than a partial result). `--stop-on-error` only changes how early the run stops (remaining items are `skipped`), not whether what ran gets kept — combine it with `--best-effort` if you want "stop at first failure but keep what already succeeded." `--force` is unrelated — it's only the docx-protection bypass. Failed items carry a machine-readable `code` field (same list as `error.code`); a rolled-back batch's JSON summary carries `"atomicRolledBack": true`.
+**デフォルトでアトミック（v1.0.137 以降）：** 各アイテムは実行され、レポートされます（そのため `N succeeded, M failed` は意味を保ち、すべての失敗が表面化します）が、*いずれか*のアイテムが失敗するとバッチ全体がロールバックされます — ディスク上のファイルはバッチ実行前とバイト単位で同一に保たれます（スタンドアロン・レジデントモードの両方でライブ確認済み）。`--best-effort` を使用すると、旧来の「成功したものだけ適用する」動作に戻せます（不完全な結果より、1 つの非対応アイテムのために全体を失う方が悪い、可逆性の低い `dump→batch` の再生に有用）。`--stop-on-error` は実行の早期停止タイミングのみを変更し（残りのアイテムは `skipped` になります）、実行済みのものが保持されるかどうかには影響しません — 「最初の失敗で停止するが、既に成功したものは保持する」を望む場合は `--best-effort` と組み合わせてください。`--force` はこれとは無関係で、docx の保護回避専用です。失敗したアイテムには機械可読な `code` フィールドが付与されます（`error.code` と同じリスト）。ロールバックされたバッチの JSON サマリーには `"atomicRolledBack": true` が付与されます。
 
-`officecli dump <file> [<path>]` emits a replayable batch JSON for round-trip — `.docx` (full coverage), `.pptx` (text/tables/pictures/charts/notes/theme + OLE/3D/video/audio/SmartArt/morph/p15 transitions via raw-set passthrough), and `.xlsx` (cells/formulas/styles + tables, conditional formatting, validations, comments, charts, sparklines, pictures, shapes, pivot tables; slicers/chartEx/OLE via verbatim carrier). Path defaults to `/` (whole document); pass a subtree path (docx: `/body`, `/body/p[N]`, `/body/tbl[N]`, `/theme`, `/settings`, `/numbering`, `/styles`; xlsx: `/SheetName`, `/sheet[N]`) to scope the dump. `officecli refresh <file.docx>` recalculates TOC page numbers / PAGE / cross-references after replay (Word backend on Windows; headless-HTML fallback elsewhere). `officecli plugins list` extends support to `.doc`, `.hwpx`, `.pdf` export.
+`officecli dump <file> [<path>]` は往復再生可能なバッチ JSON を出力します — `.docx`（全カバレッジ）、`.pptx`（生の raw-set パススルー経由でテキスト/表/画像/チャート/ノート/テーマ + OLE/3D/ビデオ/オーディオ/SmartArt/morph/p15 トランジション）、`.xlsx`（セル/数式/スタイル + 表、条件付き書式、入力規則、コメント、チャート、スパークライン、画像、シェイプ、ピボットテーブル；スライサー/chartEx/OLE は逐語キャリア経由）。パスのデフォルトは `/`（文書全体）です。サブツリーのパス（docx：`/body`、`/body/p[N]`、`/body/tbl[N]`、`/theme`、`/settings`、`/numbering`、`/styles`；xlsx：`/SheetName`、`/sheet[N]`）を渡すと、ダンプ範囲を限定できます。`officecli refresh <file.docx>` は再生後に TOC ページ番号 / PAGE / 相互参照を再計算します（Windows 上では Word バックエンド、それ以外ではヘッドレス HTML フォールバック）。`officecli plugins list` は `.doc`、`.hwpx`、`.pdf` エクスポートへの対応を拡張します。
 
 ```bash
 echo '[
@@ -334,84 +334,85 @@ echo '[
 ]' | officecli batch data.xlsx --json
 
 officecli batch data.xlsx --commands '[{"op":"set","path":"/Sheet1/A1","props":{"value":"Done"}}]' --json
-officecli batch data.xlsx --input updates.json --best-effort --json   # keep whatever succeeds even if some items fail
+officecli batch data.xlsx --input updates.json --best-effort --json   # 一部が失敗しても成功したものは保持する
 ```
 
-Supports: `add`, `set`, `get`, `query`, `remove`, `move`, `swap`, `view`, `raw`, `raw-set`, `validate`. Fields: `command` (or `op`), `path`, `parent`, `type`, `from`, `to`, `index`, `after`, `before`, `props`, `selector`, `mode`, `depth`, `part`, `xpath`, `action`, `xml`.
+サポート対象：`add`、`set`、`get`、`query`、`remove`、`move`、`swap`、`view`、`raw`、`raw-set`、`validate`。フィールド：`command`（または `op`）、`path`、`parent`、`type`、`from`、`to`、`index`、`after`、`before`、`props`、`selector`、`mode`、`depth`、`part`、`xpath`、`action`、`xml`。
 
 ---
 
-## L3: Raw XML
+## L3：生 XML
 
-Use when L2 cannot express what you need. No xmlns declarations needed — prefixes auto-registered.
+L2 で表現できない場合に使用します。xmlns の宣言は不要です — プレフィックスは自動登録されます。
 
 ```bash
-officecli raw <file> <part>                          # view raw XML
+officecli raw <file> <part>                          # 生 XML を表示
 officecli raw-set <file> <part> --xpath "..." --action replace --xml '<w:p>...</w:p>'
-officecli add-part <file> <parent>                   # create new document part (returns rId)
+officecli add-part <file> <parent>                   # 新しい文書パートを作成（rId を返す）
 ```
 
-`raw-set` actions: `append`, `prepend`, `insertbefore`, `insertafter`, `replace`, `remove`, `setattr`. Run `officecli help <format> raw` for available parts.
+`raw-set` のアクション：`append`、`prepend`、`insertbefore`、`insertafter`、`replace`、`remove`、`setattr`。利用可能なパートは `officecli help <format> raw` を実行してください。
 
 ---
 
-## Common Pitfalls
+## よくある落とし穴
 
-| Pitfall | Correct Approach |
+| 落とし穴 | 正しいアプローチ |
 |---------|-----------------|
-| `--name "foo"` | Use `--prop name="foo"` — all attributes go through `--prop` |
-| Unquoted `[N]` paths in zsh/bash | Always quote: `'/slide[1]'` or `"/slide[1]"` (shell glob-expands brackets) |
-| PPT `shape[1]` for content | `shape[1]` is typically the title placeholder. Use `shape[2]+` for content shapes |
-| `/shape[myname]` | Name indexing not supported. Use numeric index or `@name=` (PPT only) |
-| Guessing property names | Run `officecli help <format> <element>` to see exact names |
-| Modifying an open file | Close the file in PowerPoint/WPS first |
-| `\n` in shell strings | Use `\\n` for newlines in `--prop text="..."` |
-| `$` in shell text | `--prop text="$15M"` strips `$15`. Use single quotes: `--prop text='$15M'`, or heredoc batch |
+| `--name "foo"` | `--prop name="foo"` を使用してください — すべての属性は `--prop` 経由で指定します |
+| zsh/bash でクォートなしの `[N]` パス | 常にクォートしてください：`'/slide[1]'` または `"/slide[1]"`（シェルが角括弧をグロブ展開してしまいます） |
+| コンテンツに PPT `shape[1]` を使う | `shape[1]` は通常タイトルのプレースホルダーです。コンテンツ用のシェイプには `shape[2]` 以降を使用してください |
+| `/shape[myname]` | 名前によるインデックス指定はサポートされていません。数値インデックスまたは `@name=`（PPT のみ）を使用してください |
+| プロパティ名の推測 | 正確な名前を確認するには `officecli help <format> <element>` を実行してください |
+| 開いているファイルの変更 | まず PowerPoint/WPS でファイルを閉じてください |
+| シェル文字列内の `\n` | `--prop text="..."` 内の改行には `\\n` を使用してください |
+| シェルテキスト内の `$` | `--prop text="$15M"` は `$15` を除去してしまいます。シングルクォートを使用してください：`--prop text='$15M'`、またはヒアドキュメントのバッチ |
 
 ---
 
-## Specialized Skills
+## 専門スキル
 
-`officecli load_skill <name>` — output is a SKILL.md, follow its rules.
+`officecli load_skill <name>` — 出力は SKILL.md であり、その規則に従ってください。
 
-**Loading rule**:
-- Pick the most specific match in "When to use"; if none fits, load the format default (`word` / `pptx` / `excel`).
-- Scenes already contain the format default's rules — load **one** skill per artifact, never stack.
-- Loaded rules persist across turns; don't re-load each reply.
-- Two distinct artifacts → two separate loads.
+**ロードのルール**：
+- 「When to use」の中で最も具体的に一致するものを選び、該当がなければフォーマットのデフォルト（`word` / `pptx` / `excel`）をロードしてください。
+- シーンにはすでにフォーマットのデフォルトの規則が含まれています — 1 つの成果物につき 1 つのスキルのみロードし、重ねてロードしないでください。
+- ロードされた規則はターン間で保持されます。毎回の返信で再ロードする必要はありません。
+- 2 つの異なる成果物 → 2 回の個別ロード。
 
 ### Word (.docx)
 
-| Name | When to use |
+| 名前 | 使用場面 |
 |------|-------------|
-| `word` | Reports, letters, memos, proposals, generic documents |
-| `academic-paper` | Journal / conference / thesis: APA / Chicago / IEEE / MLA citations, equations, SEQ + PAGEREF cross-refs, multi-column journal layout, bibliography. NOT for business reports or letters (route those to `word`) |
+| `word` | レポート、レター、メモ、提案書、一般的な文書 |
+| `academic-paper` | 学術誌 / 会議 / 論文：APA / Chicago / IEEE / MLA 引用形式、数式、SEQ + PAGEREF 相互参照、複数段組みの学術誌レイアウト、参考文献。ビジネスレポートやレターには使用しないでください（そちらは `word` へ） |
 
 ### PowerPoint (.pptx)
 
-| Name | When to use |
+| 名前 | 使用場面 |
 |------|-------------|
-| `pptx` | Generic decks: board reviews, sales decks, all-hands, product launches |
-| `pitch-deck` | **Fundraising only** — seed / Series A-C / SAFE / convertible / strategic raise. NOT for sales / product / board decks (route those to `pptx`) |
-| `morph-ppt` | Cinematic Morph-animated presentations. NOT for static decks (route those to `pptx`) |
-| `morph-ppt-3d` | 3D Morph: GLB models, camera moves, depth. NOT for 2D-only Morph (route those to `morph-ppt`) |
+| `pptx` | 一般的なデック：役員会向けレビュー、営業デック、全社会議、製品ローンチ |
+| `pitch-deck` | **資金調達専用** — シード / シリーズ A〜C / SAFE / コンバーティブル / 戦略的資金調達。営業/製品/役員会向けデックには使用しないでください（そちらは `pptx` へ） |
+| `morph-ppt` | シネマティックな Morph アニメーション付きプレゼンテーション。静的なデックには使用しないでください（そちらは `pptx` へ） |
+| `morph-ppt-3d` | 3D Morph：GLB モデル、カメラワーク、奥行き。2D のみの Morph には使用しないでください（そちらは `morph-ppt` へ） |
 
 ### Excel (.xlsx)
 
-| Name | When to use |
+| 名前 | 使用場面 |
 |------|-------------|
-| `excel` | Generic workbooks, formulas, pivots, trackers |
-| `financial-model` | Financial models, scenarios, projections. NOT for general data analysis (route those to `excel`) |
-| `data-dashboard` | CSV/tabular data → KPI / analytics / executive dashboards with charts and sparklines. NOT for raw data tracking (route those to `excel`) |
+| `excel` | 一般的なワークブック、数式、ピボット、トラッカー |
+| `financial-model` | 財務モデル、シナリオ、予測。一般的なデータ分析には使用しないでください（そちらは `excel` へ） |
+| `data-dashboard` | CSV/表形式データ → チャートとスパークライン付きの KPI / 分析 / 経営ダッシュボード。生データのトラッキングには使用しないでください（そちらは `excel` へ） |
 
-Example: a fundraising deck task → `officecli load_skill pitch-deck` → use the printed rules.
+例：資金調達デックのタスク → `officecli load_skill pitch-deck` → 出力された規則を使用。
 
 ---
 
-## Notes
+## 注意事項
 
-- Paths are **1-based** (XPath convention): `'/body/p[3]'` = third paragraph
-- `--index` is **0-based** (array convention): `--index 0` = first position
-- **Excel exception**: for `add --type row` and `add --type col`, `--index N` is **1-based** (matches OOXML RowIndex / column letter index). `--index 5` inserts at row 5 / column 5.
-- After modifications, verify with `validate` and/or `view issues`
-- **When unsure**, run `officecli help <format> <element>` instead of guessing
+- パスは **1-based** です（XPath の慣例）：`'/body/p[3]'` = 3 番目の段落
+- `--index` は **0-based** です（配列の慣例）：`--index 0` = 1 番目の位置
+- **Excel の例外**：`add --type row` と `add --type col` では、`--index N` は **1-based** です（OOXML の RowIndex / 列文字インデックスに一致）。`--index 5` は行 5 / 列 5 に挿入されます。
+- 変更後は `validate` および/または `view issues` で確認してください
+- **不明な場合は**、推測せずに `officecli help <format> <element>` を実行してください
+</content>

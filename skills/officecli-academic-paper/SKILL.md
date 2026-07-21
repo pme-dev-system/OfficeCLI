@@ -1,105 +1,105 @@
 ---
 name: officecli-academic-paper
-description: "Use this skill to build academic-style .docx output: journal / conference / thesis chapters carrying formal citation style (APA, Chicago, IEEE, MLA), numbered equations, figure & table cross-references, footnotes/endnotes, bibliography, or multi-column journal layout. Trigger on: 'research paper', 'journal paper', 'conference paper', 'manuscript', 'thesis', 'APA', 'MLA', 'Chicago', 'IEEE two-column', 'bibliography', 'hanging indent', 'citation style', 'abstract + keywords', 'equation numbering', 'cross-reference', paper with footnotes/endnotes. Output is a single .docx."
+description: "このスキルは、学術スタイルの .docx 出力を作成する際に使用します: 正式な引用スタイル（APA、Chicago、IEEE、MLA）、番号付き数式、図表の相互参照、脚注/文末脚注、参考文献リスト、または複数段組のジャーナルレイアウトを伴うジャーナル論文・学会論文・学位論文の章など。トリガーとなるキーワード: 'research paper'、'journal paper'、'conference paper'、'manuscript'、'thesis'、'APA'、'MLA'、'Chicago'、'IEEE two-column'、'bibliography'、'hanging indent'、'citation style'、'abstract + keywords'、'equation numbering'、'cross-reference'、脚注/文末脚注を伴う論文。出力は単一の .docx ファイル。"
 ---
 
-# OfficeCLI Academic Paper Skill
+# OfficeCLI 学術論文スキル
 
-**This skill is a scene layer on top of `officecli-docx`.** Every docx hard rule — style architecture, heading hierarchy, shell quoting, page-break rules, live PAGE field, Delivery Gate, renderer quirks — is inherited, not re-taught. This file adds only what academic papers need on top: citation styles, equations, SEQ / PAGEREF cross-refs, multi-column journal layout, bibliography hanging indent, abstract/keywords/affiliation block.
+**このスキルは `officecli-docx` の上に乗るシーンレイヤーです。** docx の基本ルール — スタイル構造、見出し階層、シェルのクォーティング、改ページルール、ライブ PAGE フィールド、Delivery Gate、レンダラーの癖 — はすべて継承されるものであり、再度教える対象ではありません。このファイルが追加するのは、学術論文に固有の内容だけです: 引用スタイル、数式、SEQ / PAGEREF による相互参照、複数段組のジャーナルレイアウト、参考文献のぶら下げインデント、要旨/キーワード/所属ブロック。
 
-When the docx base rules cover it, the text here says `→ see docx v2 §X`. Read docx v2 first if you have not.
+docx の基本ルールでカバーされている箇所は、本文中で `→ see docx v2 §X` と表記します。まだ読んでいなければ、先に docx v2 を読んでください。
 
-## Setup
+## セットアップ
 
-If `officecli` is missing:
+`officecli` が未インストールの場合:
 
 - **macOS / Linux**: `curl -fsSL https://d.officecli.ai/install.sh | bash`
 - **Windows (PowerShell)**: `irm https://d.officecli.ai/install.ps1 | iex`
 
-Verify with `officecli --version` (open a new terminal if PATH hasn't picked up). If install fails, download a binary from https://github.com/iOfficeAI/OfficeCLI/releases.
+`officecli --version` で確認してください（PATH が反映されていない場合は新しいターミナルを開いてください）。インストールに失敗した場合は https://github.com/iOfficeAI/OfficeCLI/releases からバイナリをダウンロードしてください。
 
-## ⚠️ Help-First Rule
+## ⚠️ ヘルプ優先ルール
 
-**This skill teaches what an academic paper requires, not every command flag.** When a prop name, enum value, or field instruction is uncertain, consult help BEFORE guessing.
+**このスキルが教えるのは学術論文が要求する内容であり、すべてのコマンドフラグではありません。** プロパティ名、列挙値、フィールドの指定が不確かな場合は、推測する前にヘルプを確認してください。
 
 ```bash
-officecli help docx                          # All docx elements
-officecli help docx <element>                # Full schema (e.g. section, equation, field, footnote)
-officecli help docx <element> --json         # Machine-readable
+officecli help docx                          # 全 docx 要素
+officecli help docx <element>                # 完全なスキーマ（例: section、equation、field、footnote）
+officecli help docx <element> --json         # 機械可読形式
 ```
 
-Help is pinned to the installed CLI version. **When this skill and help disagree, help wins.** Every `--prop X=` in this file has been grep-verified against `officecli help docx <element>` — if help adds / renames a prop in a later version, trust help.
+ヘルプはインストール済みの CLI バージョンに紐づいています。**このスキルとヘルプが食い違う場合は、ヘルプが優先します。** 本ファイル内のすべての `--prop X=` は `officecli help docx <element>` に対して grep 検証済みです — 後のバージョンでヘルプがプロパティを追加・改名した場合は、ヘルプを信頼してください。
 
-## Mental Model & Inheritance
+## メンタルモデルと継承関係
 
-**Inherits docx v2.** You should have read `skills/officecli-docx/SKILL.md` first. This skill assumes you know how to add paragraphs, set styles, build tables, insert images, manage TOC/footer/headers, force page breaks, and run the Delivery Gate. If any of those are unfamiliar, open a second session on docx v2 before continuing.
+**docx v2 を継承します。** 先に `skills/officecli-docx/SKILL.md` を読んでおくべきです。このスキルは、段落の追加、スタイル設定、表の構築、画像の挿入、TOC/フッター/ヘッダーの管理、強制改ページ、Delivery Gate の実行についてすでに理解していることを前提とします。これらのいずれかに馴染みがなければ、続ける前に docx v2 の別セッションを開いてください。
 
-## Shell & Execution Discipline
+## シェルと実行の規律
 
-**Shell quoting, incremental execution, `$FILE` convention** → see docx v2 §Shell & Execution Discipline. The same rules apply here verbatim — quote `[N]` paths, single-quote any value containing `$` (including `$2.8B` in a body paragraph or `@` DOIs), never hand-write `\$ \t \n` in executable examples, one command at a time. Academic-paper examples below use `$FILE` as a shell variable (`FILE="thesis.docx"`).
+**シェルのクォーティング、段階的な実行、`$FILE` 規約** → see docx v2 §Shell & Execution Discipline。同じルールがここでもそのまま適用されます — `[N]` を含むパスはクォートし、`$` を含む値（本文段落中の `$2.8B` や `@` を含む DOI も含む）はシングルクォートで囲み、実行例の中で `\$ \t \n` を手書きせず、コマンドは一度に一つずつ実行してください。以下の学術論文の例では、`$FILE` をシェル変数として使用します（`FILE="thesis.docx"`）。
 
-## What "academic" means here (identity)
+## ここでの「学術」の意味（アイデンティティ）
 
-An academic paper is a docx with a **scholarly layer** on top: verifiable citations, precise equations, cross-refs that stay in sync, a formatted reference list. The base docx rules still apply; academic adds six deltas:
+学術論文とは、**学術的な層**が上乗せされた docx です: 検証可能な引用、精緻な数式、同期を保つ相互参照、整形された参考文献リスト。docx の基本ルールはそのまま適用され、学術性が加える差分は六つです:
 
-1. **Citation style is a contract.** APA / Chicago / IEEE / MLA each dictate author format, date placement, reference-list order, in-text marker shape. Pick one at the start; every later decision (hanging indent, footnote vs parenthetical, `[1]` vs `(Smith, 2024)`) follows.
-2. **Equations are first-class content** — inline `oMath` inside prose, display `oMathPara` as standalone blocks, optionally numbered.
-3. **Figures and tables auto-number.** `SEQ Figure` / `SEQ Table` fields count them; `PAGEREF` links "see Fig. 2" to its live page number.
-4. **Bibliography uses hanging indent** (first line flush left, continuation lines indented). Not first-line indent. Not left indent alone. Hanging.
-5. **Abstract / keywords / affiliation block** is a first-page three-piece, not a cover in the marketing sense. Block-style abstract, no first-line indent, no decoration.
-6. **Multi-column layout** appears in IEEE / ACM / Nature / many journals: single-column abstract + two-column body.
+1. **引用スタイルは契約です。** APA / Chicago / IEEE / MLA はそれぞれ、著者表記、日付の位置、参考文献リストの並び順、文中マーカーの形を規定します。最初に一つを選べば、以降のすべての判断（ぶら下げインデント、脚注か括弧書きか、`[1]` か `(Smith, 2024)` か）はそれに従います。
+2. **数式は一級コンテンツです** — 本文中のインライン `oMath`、独立ブロックとしての表示用 `oMathPara`、必要に応じて番号付け。
+3. **図表は自動採番されます。** `SEQ Figure` / `SEQ Table` フィールドがカウントし、`PAGEREF` が「図2参照」をその実際のページ番号にリンクします。
+4. **参考文献はぶら下げインデントを使います**（一行目は左揃え、継続行はインデント）。字下げインデントではありません。左インデント単独でもありません。ぶら下げです。
+5. **要旨/キーワード/所属ブロック**は、一枚目の三点セットであり、マーケティング的な意味でのカバーではありません。ブロックスタイルの要旨、字下げインデントなし、装飾なし。
+6. **複数段組レイアウト**は IEEE / ACM / Nature など多くのジャーナルに見られます: 単段組の要旨 + 二段組の本文。
 
-### Reverse handoff — when to go BACK to docx
+### 逆方向のハンドオフ — docx に戻るべきタイミング
 
-Stay in **docx v2** for white papers, policy briefs, technical reports, HR templates — anything without a venue / citation style. Use **this skill** only when the document will carry at least TWO of: citation-style biblio, equations, SEQ/PAGEREF cross-refs, multi-column, abstract + keywords block.
+会場（venue）や引用スタイルを持たない白書、政策提言書、技術レポート、人事テンプレートなどは **docx v2** に留まってください。**このスキル**を使うのは、文書が以下のうち少なくとも二つを備える場合のみです: 引用スタイルの参考文献、数式、SEQ/PAGEREF 相互参照、複数段組、要旨+キーワードブロック。
 
-## Workflow — 5 verbs
+## ワークフロー — 5つの動詞
 
-1. **Read the venue spec.** APA 7 / Chicago 17 / IEEE / MLA 9 / journal-specific. Line spacing, font, citation shape, biblio sort order — everything downstream follows from this one decision.
-2. **Plan the sections.** Abstract → keywords → introduction → methods → results → discussion → conclusion → references. Estimate heading count for TOC decision (3+ headings = add a TOC, see docx v2 §Table of Contents).
-3. **Set styles up front.** Heading1 / Heading2 / Heading3 / Caption / AbstractTitle / Bibliography. Define all styles BEFORE any content (→ see docx v2 §Paragraphs and styles — same rule here, same failure mode if skipped).
-4. **Build body in order.** Cover / title block → abstract → keywords → TOC (if needed) → body sections in reading order → figures / tables with SEQ captions → bibliography → footnotes are added last by paragraph path.
-5. **QA — Delivery Gate.** Inherit docx v2 Gates 1-3, then add academic Gates 4-5 below.
+1. **会場（venue）の仕様を読む。** APA 7 / Chicago 17 / IEEE / MLA 9、またはジャーナル固有の仕様。行間、フォント、引用形式、参考文献の並び順 — 以降のすべてはこの一つの決定から従います。
+2. **セクションを計画する。** 要旨 → キーワード → 序論 → 方法 → 結果 → 考察 → 結論 → 参考文献。見出しの数を見積もり TOC の要否を判断します（3つ以上の見出しなら TOC を追加、see docx v2 §Table of Contents）。
+3. **前もってスタイルを設定する。** Heading1 / Heading2 / Heading3 / Caption / AbstractTitle / Bibliography。コンテンツを追加する前にすべてのスタイルを定義してください（→ see docx v2 §Paragraphs and styles — ここでも同じルール、省略した場合の失敗モードも同じ）。
+4. **本文を順番通りに構築する。** 表紙/タイトルブロック → 要旨 → キーワード → TOC（必要なら）→ 読み順の本文セクション → SEQ キャプション付きの図表 → 参考文献 → 脚注は本文追加後に段落パスで最後に加えます。
+5. **QA — Delivery Gate。** docx v2 の Gate 1〜3 を継承し、下記の学術専用 Gate 4〜5 を追加します。
 
-## Requirements (academic floor on top of docx v2)
+## 要件（docx v2 の上に乗る学術の最低ライン）
 
-Everything in docx v2 §Requirements for Outputs applies. On top of that, academic papers MUST meet these additional rules:
+docx v2 §Requirements for Outputs のすべてが適用されます。それに加え、学術論文は以下の追加ルールを満たさなければなりません:
 
-### Typography and spacing (venue-aware)
+### タイポグラフィと行間（会場依存）
 
-- **Font.** Times New Roman 11-12pt body (default) or venue-specified (IEEE uses Times 10pt 2-col; APA allows Calibri 11pt). Same body font throughout; no decorative heading fonts.
-- **Heading hierarchy.** H1 = 20pt bold, H2 = 14pt bold, H3 = 12pt bold italic, body = 11-12pt. (Same numbers as docx v2 — restated because academic papers never rely on Word defaults.)
-- **Line spacing.** APA 7 = 2x (double). Chicago / IEEE / most journals = 1.5x. Never below 1.15x. Set on body paragraphs and on References.
-- **Margins.** 1 inch (1440 twips) all sides unless the venue says otherwise (some journals require 1.25in left for binding — check the spec).
+- **フォント。** 本文は Times New Roman 11-12pt（デフォルト）、または会場指定（IEEE は Times 10pt 2段組、APA は Calibri 11pt を許容）。本文全体で同じフォントを使い、見出しに装飾フォントは使わない。
+- **見出し階層。** H1 = 20pt bold、H2 = 14pt bold、H3 = 12pt bold italic、本文 = 11-12pt。（docx v2 と同じ数値ですが、学術論文では Word のデフォルトに頼ることが決してないため改めて記載します。）
+- **行間。** APA 7 = 2倍（ダブルスペース）。Chicago / IEEE / ほとんどのジャーナル = 1.5倍。1.15倍を下回らないこと。本文段落と References の両方に設定します。
+- **余白。** 特に会場の指定がない限り全辺 1 インチ（1440 twips）（一部ジャーナルは製本用に左 1.25in を要求 — 仕様を確認してください）。
 
-### Abstract, bibliography, caption placement
+### 要旨、参考文献、キャプションの配置
 
-- **Abstract is block-style.** NO `firstLineIndent`. Use `spaceAfter=12pt` for paragraph separation. If `view issues` reports "body paragraph missing first-line indent" on an Abstract paragraph, it's a false positive — ignore.
-- **Bibliography uses hanging indent.** Each entry is one paragraph with `indent=720 hangingIndent=720` (left indent 0.5", first-line reversed by same amount). First line flush left; wraps indent under author name.
-- **Figure captions go BELOW the figure.** Table captions go ABOVE the table. This is the single rule most non-academics get wrong — APA, Chicago, IEEE, MLA all agree on it.
-- **Citation round-trip.** Every in-text citation key must resolve to an entry in the reference list. Delivery Gate 4 verifies.
-- **SEQ presence.** Any paper with numbered figures or tables must carry live `SEQ Figure` / `SEQ Table` fields (not hardcoded "Figure 1" text that drifts when you insert a new figure mid-document). Delivery Gate 5 verifies.
+- **要旨はブロックスタイル。** `firstLineIndent` を使わない。段落間の区切りには `spaceAfter=12pt` を使う。`view issues` が要旨段落に対して「本文段落に字下げインデントがない」と報告した場合、それは誤検知なので無視してよい。
+- **参考文献はぶら下げインデントを使う。** 各項目は `indent=720 hangingIndent=720`（左インデント 0.5"、一行目は同量だけ逆方向）を持つ一つの段落。一行目は左揃え、折り返し行は著者名の下でインデントされます。
+- **図のキャプションは図の下に置く。** 表のキャプションは表の上に置く。これは、学術分野に不慣れな人が最も間違えやすい単一のルールです — APA、Chicago、IEEE、MLA すべてがこの点で一致しています。
+- **引用のラウンドトリップ。** すべての文中引用キーは、参考文献リストの項目に解決できなければなりません。Delivery Gate 4 がこれを検証します。
+- **SEQ の存在。** 番号付きの図表を持つ論文はすべて、生きた `SEQ Figure` / `SEQ Table` フィールドを持たなければなりません（文書中に図を挿入するとずれてしまうハードコードされた「Figure 1」というテキストではなく）。Delivery Gate 5 がこれを検証します。
 
-### Cover / first-page block
+### 表紙/一枚目ブロック
 
-Academic covers differ from professional covers. Minimum elements: title (centered, 20-22pt bold), author(s), affiliation, submission target or journal, date, abstract, keywords. The "60% fill" rule from docx v2 §Visual delivery floor still applies — a three-line cover with half a page of whitespace is a fail. See §Abstract / keywords / affiliation block below for the first-page recipe.
+学術論文の表紙は、一般的なビジネス文書の表紙とは異なります。最低限の要素: タイトル（中央揃え、20-22pt bold）、著者、所属、投稿先またはジャーナル名、日付、要旨、キーワード。docx v2 §Visual delivery floor の「60% 埋める」ルールはここでも適用されます — 三行だけの表紙にページの半分が空白なら不合格です。一枚目のレシピについては下記の §要旨 / キーワード / 所属ブロック を参照してください。
 
-### Section numbering convention (STYLE-DEPENDENT — do not apply blindly)
+### 節番号の慣習（スタイル依存 — 機械的に適用しないこと）
 
-Academic section numbers are **part of the heading text**, not computed via list numbering. `officecli`'s `numId`/`listStyle` mechanism is fragile across Heading1 re-use, so hand-write the prefix. BUT the prefix shape varies by style — DO NOT use the same form for all four:
+学術的な節番号は、リスト番号付けで計算するものではなく、**見出しテキストの一部**です。`officecli` の `numId`/`listStyle` の仕組みは Heading1 の再利用をまたぐと壊れやすいため、プレフィックスは手書きしてください。ただし、そのプレフィックスの形はスタイルによって異なります — 4つのスタイルすべてに同じ形式を使わないでください:
 
-| Style | H1 format | H2 format | Example |
+| スタイル | H1 形式 | H2 形式 | 例 |
 |---|---|---|---|
-| **APA 7** | **UNNUMBERED centered bold** | Unnumbered left-aligned bold | `Introduction` / `Methods` (centered) |
-| **Chicago** | `"N. Title"` left-aligned | `"N.M Title"` | `1. Introduction`, `2.1 Policy Formation` |
-| **IEEE** | `"N. TITLE"` ALL CAPS + Roman numerals | `A. Subtitle` title case | `I. INTRODUCTION`, `II. RELATED WORK`, `A. Datasets` |
-| **MLA 9** | Unnumbered left-aligned bold | Same | `Literature Review` (no prefix) |
+| **APA 7** | **番号なし・中央揃え・太字** | 番号なし・左揃え・太字 | `Introduction` / `Methods`（中央揃え） |
+| **Chicago** | `"N. Title"` 左揃え | `"N.M Title"` | `1. Introduction`、`2.1 Policy Formation` |
+| **IEEE** | `"N. TITLE"` 全て大文字 + ローマ数字 | `A. Subtitle` タイトルケース | `I. INTRODUCTION`、`II. RELATED WORK`、`A. Datasets` |
+| **MLA 9** | 番号なし・左揃え・太字 | 同上 | `Literature Review`（プレフィックスなし） |
 
-APA 7 L1 headings are **centered, bold, unnumbered**; L2 are flush-left bold; L3 flush-left bold italic; L4/L5 run-in. Do NOT prefix APA headings with `1. / 2.` — that is Chicago/IEEE convention. IEEE wants ALL CAPS with Roman numerals (`I. INTRODUCTION`); inside each section, use `A./B./C.` sub-headings (title case). Arabic-numbered body sections are Chicago-style only.
+APA 7 の L1 見出しは **中央揃え、太字、番号なし**、L2 は左揃え太字、L3 は左揃え太字斜体、L4/L5 はランイン。APA の見出しに `1. / 2.` のようなプレフィックスを付けないでください — それは Chicago/IEEE の慣習です。IEEE はローマ数字付きの全て大文字（`I. INTRODUCTION`）を求めます。各節の中では `A./B./C.` のサブ見出し（タイトルケース）を使います。アラビア数字で採番された本文節は Chicago スタイルのみです。
 
-**Exception for all four**: References / Bibliography / Works Cited / Acknowledgments are unnumbered regardless of style — omit the `N.` prefix.
+**四スタイル共通の例外**: References / Bibliography / Works Cited / Acknowledgments はスタイルに関わらず番号なし — `N.` プレフィックスは省略してください。
 
-## Quick Start — minimal APA paper
+## クイックスタート — 最小構成の APA 論文
 
 ```bash
 FILE="paper.docx"
@@ -121,57 +121,57 @@ officecli close "$FILE"
 officecli validate "$FILE"
 ```
 
-Ten-line skeleton. Real papers grow by adding more body paragraphs, more bibliography entries (each with the same `indent=720 hangingIndent=720` pair), figures / tables with captions, and a TOC if there are 3+ Heading1s. The Quick Start validates clean; the sections below elaborate each dimension.
+十行の骨格です。実際の論文は、本文段落を増やし、参考文献項目を増やし（それぞれ同じ `indent=720 hangingIndent=720` のペアを付けて）、キャプション付きの図表を加え、Heading1 が3つ以上あれば TOC を加えることで育っていきます。クイックスタートは検証をクリアします。以降の節ではそれぞれの側面を詳しく説明します。
 
-## Citation style recipes
+## 引用スタイルのレシピ
 
-Four mainstream families. Pick one at project start; every downstream decision follows. **Per-style decision table:**
+主流の4つのファミリーです。プロジェクト開始時に一つを選べば、以降のすべての判断はそれに従います。**スタイル別の決定表:**
 
-| Style | In-text shape | Reference list order | Body line spacing | Footnotes? |
+| スタイル | 文中引用の形 | 参考文献リストの並び順 | 本文行間 | 脚注は使う？ |
 |---|---|---|---|---|
-| APA 7 | `(Smith, 2024)` or `Smith (2024)` | Alphabetical by author | 2x (double) | Rare (content notes only) |
-| Chicago 17 (Notes-Bib) | Superscript footnote number | Alphabetical by author | 1.5x-2x | **Primary** (full citation in footnote) |
-| IEEE | `[1]`, `[2]`, ..., `[N]` | Order of first citation | 1.15x-1.5x, 2-col | Rare |
-| MLA 9 | `(Smith 412)` page-number | Alphabetical by author, "Works Cited" | 2x | Rare |
+| APA 7 | `(Smith, 2024)` または `Smith (2024)` | 著者のアルファベット順 | 2倍（ダブル） | まれ（内容注のみ） |
+| Chicago 17（Notes-Bib） | 上付きの脚注番号 | 著者のアルファベット順 | 1.5倍〜2倍 | **主軸**（完全な引用情報を脚注に記載） |
+| IEEE | `[1]`、`[2]`、...、`[N]` | 初出順 | 1.15倍〜1.5倍、2段組 | まれ |
+| MLA 9 | `(Smith 412)` ページ番号 | 著者のアルファベット順、「Works Cited」 | 2倍 | まれ |
 
-Shared defaults across all four: reference-list paragraphs use `indent=720 hangingIndent=720` (hanging indent 0.5"); add a live TOC if 3+ Heading1s (→ see docx v2 §Table of Contents); set `updateFields=true` and report TOC page numbers as uncomputed until a Word-compatible field engine updates them.
+四スタイル共通のデフォルト: 参考文献段落は `indent=720 hangingIndent=720`（ぶら下げインデント 0.5"）を使用する。Heading1 が3つ以上あればライブ TOC を追加する（→ see docx v2 §Table of Contents）。`updateFields=true` を設定し、Word 互換のフィールドエンジンが更新するまで TOC のページ番号は未計算として報告する。
 
-### APA 7 (social sciences — psychology, education, management)
+### APA 7（社会科学 — 心理学、教育学、経営学）
 
-- In-text: `(Author, Year)` or `Author (Year)` for narrative. Page number required on direct quotes: `(Smith, 2024, p. 15)`. Three+ authors: `(Smith et al., 2024)` after first citation.
-- Reference list order: **alphabetical by first author's surname**. Title caps: sentence case for article titles, title case for journal names (italic).
-- Reference shape: `Author, A. A., & Co-Author, B. B. (Year). Title of article. Journal Name, Volume(Issue), pages.` DOI preferred over URL; present as https URL, not `doi:` prefix.
-- Double-space everything (`lineSpacing=2x`) including abstract and references. Body first-line indent = 0.5" (`firstLineIndent=720`).
+- 文中: `(Author, Year)` または、地の文なら `Author (Year)`。直接引用にはページ番号が必須: `(Smith, 2024, p. 15)`。著者3名以上: 初出後は `(Smith et al., 2024)`。
+- 参考文献リストの並び順: **第一著者の姓のアルファベット順**。タイトルの表記: 論文タイトルはセンテンスケース、ジャーナル名はタイトルケース（斜体）。
+- 参考文献の形: `Author, A. A., & Co-Author, B. B. (Year). Title of article. Journal Name, Volume(Issue), pages.` DOI は URL より優先し、`doi:` プレフィックスではなく https URL として記載する。
+- すべてダブルスペース（`lineSpacing=2x`）とし、要旨と参考文献も含む。本文の一行目インデントは 0.5"（`firstLineIndent=720`）。
 
 ```bash
-# Body paragraph with parenthetical citation
+# 括弧書き引用を含む本文段落
 officecli add "$FILE" /body --type paragraph --prop text="Remote work adoption accelerated during the pandemic (Kramer & Kramer, 2020)." --prop size=12pt --prop lineSpacing=2x --prop firstLineIndent=720
-# Reference entry with hanging indent
+# ぶら下げインデント付きの参考文献項目
 officecli add "$FILE" /body --type paragraph --prop text="Kramer, A., & Kramer, K. Z. (2020). The potential impact of the Covid-19 pandemic on occupational status. Journal of Vocational Behavior, 119, 103442." --prop size=12pt --prop lineSpacing=2x --prop indent=720 --prop hangingIndent=720
-# DOI hyperlink appended to the reference paragraph
+# 参考文献段落に付与する DOI ハイパーリンク
 officecli add "$FILE" "/body/p[last()]" --type hyperlink --prop url="https://doi.org/10.1016/j.jvb.2020.103442" --prop text="https://doi.org/10.1016/j.jvb.2020.103442"
 ```
 
-QA: `officecli query "$FILE" 'paragraph[hangingIndent]'` returns every reference entry; zero references with first-line indent instead of hanging.
+QA: `officecli query "$FILE" 'paragraph[hangingIndent]'` はすべての参考文献項目を返す。字下げインデントのままの参考文献項目がぶら下げインデントの代わりに残っているものがゼロであること。
 
-### Chicago 17 — Notes-Bibliography (humanities — history, philosophy, religion)
+### Chicago 17 — Notes-Bibliography（人文科学 — 歴史学、哲学、宗教学）
 
-- In-text: superscript footnote number; full citation in the first footnote (`Timothy Brook, The Troubled Empire (Cambridge, MA: Harvard UP, 2010), 142.`); **shortened form** thereafter (`Brook, Troubled Empire, 150.`).
-- **Repeat-citation rule (Chicago 17, op. cit. deprecated):**
-  - **Immediately-consecutive** citation of **the same source, same page** → `Ibid.`
-  - **Immediately-consecutive, different page** of same source → `Ibid., 22.`
-  - Non-consecutive repeat → **shortened form** (`Brook, Troubled Empire, 150.`), NOT `op. cit.`. Chicago 17 drops `op. cit.` — use shortened form every time except for immediate repeats.
-- Bibliography at end, **alphabetical by first author's surname** ("Brook, Timothy."), hanging indent. Footnote body renders at the viewer's footnote default (typically 10pt); bibliography entries 12pt. (The `footnote` element exposes only `text` — size is not settable per-footnote; trust renderer defaults.)
-- Typical split for primary-source-heavy papers: `Primary Sources` and `Secondary Sources` as two Heading2s under a single `Bibliography` Heading1. Book titles italic in both footnotes and bibliography.
-- Chicago also has an Author-Date variant used in the sciences — if the venue specifies Chicago Author-Date, fall back to the APA recipe and change only the punctuation (no comma between author and year: `(Smith 2024)`).
+- 文中: 上付きの脚注番号。完全な引用情報を最初の脚注に記載する（`Timothy Brook, The Troubled Empire (Cambridge, MA: Harvard UP, 2010), 142.`）。それ以降は **短縮形**（`Brook, Troubled Empire, 150.`）。
+- **再引用のルール（Chicago 17, op. cit. は非推奨）:**
+  - 同じ出典・同じページを**直前に連続して**引用する場合 → `Ibid.`
+  - 同じ出典の**直前連続・異なるページ** → `Ibid., 22.`
+  - 連続していない再引用 → **短縮形**（`Brook, Troubled Empire, 150.`）を使い、`op. cit.` は使わない。Chicago 17 では `op. cit.` を廃止しており、直前の反復を除いて常に短縮形を使う。
+- 巻末に参考文献リスト、**第一著者の姓のアルファベット順**（「Brook, Timothy.」）、ぶら下げインデント。脚注本文は閲覧者側の脚注デフォルト（通常 10pt）でレンダリングされ、参考文献項目は 12pt。（`footnote` 要素は `text` のみを公開しており、脚注ごとにサイズを設定することはできません — レンダラーのデフォルトを信頼してください。）
+- 一次資料の多い論文では典型的に、単一の `Bibliography` Heading1 の下に `Primary Sources` と `Secondary Sources` の二つの Heading2 に分割する。書名は脚注・参考文献の両方で斜体。
+- Chicago には理系分野で使われる Author-Date バリアントもある — 会場が Chicago Author-Date を指定している場合は、APA のレシピに従い句読点だけを変更する（著者と年の間にカンマを入れない: `(Smith 2024)`）。
 
 ```bash
-# Body paragraph that will anchor a footnote, then the footnote itself
+# 脚注のアンカーとなる本文段落、続けて脚注そのもの
 officecli add "$FILE" /body --type paragraph --prop text="The Ming dynasty's 海禁 policy shaped coastal trade for two centuries." --prop size=12pt --prop lineSpacing=1.5x --prop firstLineIndent=720
 officecli add "$FILE" "/body/p[last()]" --type footnote --prop text="Timothy Brook, The Troubled Empire: China in the Yuan and Ming Dynasties (Cambridge, MA: Harvard University Press, 2010), 142."
-# Next footnote — shortened form
+# 次の脚注 — 短縮形
 officecli add "$FILE" "/body/p[last()]" --type footnote --prop text="Brook, Troubled Empire, 150."
-# Bibliography section split — primary sources first
+# 参考文献セクションの分割 — 一次資料を先に
 officecli add "$FILE" /body --type paragraph --prop text="Bibliography" --prop style=Heading1 --prop size=20pt --prop bold=true --prop spaceBefore=18pt
 officecli add "$FILE" /body --type paragraph --prop text="Primary Sources" --prop style=Heading2 --prop size=14pt --prop bold=true --prop spaceBefore=12pt
 officecli add "$FILE" /body --type paragraph --prop text="Ming Shilu 明實錄. Taipei: Academia Sinica, 1966." --prop size=12pt --prop indent=720 --prop hangingIndent=720
@@ -179,329 +179,329 @@ officecli add "$FILE" /body --type paragraph --prop text="Secondary Sources" --p
 officecli add "$FILE" /body --type paragraph --prop text="Brook, Timothy. The Troubled Empire: China in the Yuan and Ming Dynasties. Cambridge, MA: Harvard University Press, 2010." --prop size=12pt --prop indent=720 --prop hangingIndent=720
 ```
 
-QA: `officecli query "$FILE" 'footnote'` count ≥ body-paragraph citation count.
+QA: `officecli query "$FILE" 'footnote'` の件数 ≥ 本文段落内の引用件数。
 
-### IEEE (engineering — transactions, conference proceedings)
+### IEEE（工学 — トランザクション誌、学会予稿集）
 
-- In-text: `[1]`, `[2]`. Numbered in **order of first appearance**, not alphabetical. Reuse the same number for repeat citations. `[1, p. 15]` for page refs, `[1]-[3]` for a range.
-- Reference entry starts with the bracketed number: `[1] A. Smith and B. Jones, "Title," IEEE Trans. X, vol. 5, no. 3, pp. 1-10, 2024, doi: ...`. Authors are initial-first; journal names abbreviated per IEEE list (`IEEE Trans. Neural Netw.`, not full name).
-- Body is **two-column** (see §Multi-column below). Abstract is single-column above the fold, 10pt, 1.15x line spacing, typically 200-250 words.
-- First-line indent on body paragraphs = 0.2" (`firstLineIndent=288` twips ≈ 14pt). Smaller than APA's 0.5" because the 2-col width is narrower.
-- **Section headings: ALL CAPS with Roman numerals** — `I. INTRODUCTION`, `II. RELATED WORK`, `III. METHOD`. Sub-sections `A. Datasets`, `B. Baselines` in title case. Do NOT use `1. Introduction` (Arabic) for IEEE — that is Chicago style.
-- **Tables are numbered Roman**: `Table I`, `Table II`, `Table III`. Figures remain Arabic (`Fig. 1`, `Fig. 2`). `recalcFields=seq` writes Arabic cached values for both — for IEEE Roman tables, either patch the cached `<w:t>` to Roman manually after recalc, or accept Arabic and note it in the cover letter.
+- 文中: `[1]`、`[2]`。アルファベット順ではなく**初出順**で採番する。同じ出典の再引用には同じ番号を再利用する。ページ参照は `[1, p. 15]`、範囲は `[1]-[3]`。
+- 参考文献項目は角括弧の番号で始まる: `[1] A. Smith and B. Jones, "Title," IEEE Trans. X, vol. 5, no. 3, pp. 1-10, 2024, doi: ...`。著者はイニシャル先頭、ジャーナル名は IEEE のリストに従って省略形にする（`IEEE Trans. Neural Netw.` であり、フルネームではない）。
+- 本文は**二段組**（下記 §複数段組 を参照）。要旨は折り返し前の単段組、10pt、行間 1.15倍、通常 200〜250 語。
+- 本文段落の一行目インデントは 0.2"（`firstLineIndent=288` twips ≈ 14pt）。2段組の幅が狭いため APA の 0.5" より小さい。
+- **節見出し: ローマ数字付きの全て大文字** — `I. INTRODUCTION`、`II. RELATED WORK`、`III. METHOD`。サブセクションはタイトルケースで `A. Datasets`、`B. Baselines`。IEEE で `1. Introduction`（アラビア数字）を使わないこと — それは Chicago スタイルです。
+- **表はローマ数字で採番**: `Table I`、`Table II`、`Table III`。図はアラビア数字のまま（`Fig. 1`、`Fig. 2`）。`recalcFields=seq` は両方にアラビア数字のキャッシュ値を書き込みます — IEEE のローマ数字表については、recalc 後にキャッシュされた `<w:t>` を手動でローマ数字にパッチするか、アラビア数字のまま受け入れてカバーレターに注記してください。
 
 ```bash
-# Body citing reference 1
+# 参考文献1を引用する本文
 officecli add "$FILE" /body --type paragraph --prop text="Attention-based anomaly detection has been applied to industrial sensor data [1], [2]." --prop size=10pt --prop lineSpacing=1.15x
-# Reference list entry — number in the text
+# 参考文献リストの項目 — 本文中の番号
 officecli add "$FILE" /body --type paragraph --prop text="[1] A. Smith and B. Jones, \"Attention for anomaly detection,\" IEEE Trans. Neural Netw., vol. 35, no. 2, pp. 412-430, 2024." --prop size=10pt --prop indent=720 --prop hangingIndent=720
 officecli add "$FILE" /body --type paragraph --prop text="[2] C. Lee, \"Time-series anomaly survey,\" in Proc. ICML, 2023, pp. 1200-1215." --prop size=10pt --prop indent=720 --prop hangingIndent=720
 ```
 
-QA: the highest `[N]` in body must equal the number of reference-list entries. Grep: `officecli view "$FILE" text | grep -oE '\[[0-9]+\]' | sort -u | tail -5`.
+QA: 本文中で最も大きい `[N]` は参考文献項目数と一致しなければならない。Grep: `officecli view "$FILE" text | grep -oE '\[[0-9]+\]' | sort -u | tail -5`。
 
-### MLA 9 (literature, languages, cultural studies)
+### MLA 9（文学、言語、文化研究）
 
-Diff vs APA: in-text is `(Author Page)` **no comma** (e.g. `(Smith 412)`); direct quotes always carry the page number. Reference section titled **Works Cited** (not References / Bibliography). Entries alphabetical by surname, hanging indent, 2x spacing, nine "core elements" separated by periods: `Author. Title. Container, Other Contributors, Version, Number, Publisher, Date, Location.` — skip any that don't apply. Book titles italic; article titles in quotes. Otherwise identical to APA paragraph setup.
+APA との違い: 文中引用は `(Author Page)` で**カンマなし**（例: `(Smith 412)`）。直接引用には常にページ番号を付ける。参考文献セクションのタイトルは **Works Cited**（References / Bibliography ではない）。項目は姓のアルファベット順、ぶら下げインデント、行間2倍、ピリオドで区切られた九つの「コア要素」: `Author. Title. Container, Other Contributors, Version, Number, Publisher, Date, Location.` — 該当しない要素は省略する。書名は斜体、記事タイトルは引用符。それ以外は APA の段落設定と同一。
 
-## Equations (OMML — inline vs display)
+## 数式（OMML — インライン vs 表示）
 
-`--type equation` parses a LaTeX-ish formula into OMML. Two modes, selected by `--prop mode=`:
+`--type equation` は LaTeX 風の数式を OMML にパースします。`--prop mode=` で選択する二つのモード:
 
-| Mode | XML | Visual | Use |
+| モード | XML | 見た目 | 用途 |
 |---|---|---|---|
-| `display` (default) | `<m:oMathPara>` at `/body` | Standalone centered block | Numbered equations, theorem statements |
-| `inline` | `<m:oMath>` appended to a run inside a paragraph | Runs with the text | `if $x > 0$` style in prose |
+| `display`（デフォルト） | `/body` 上の `<m:oMathPara>` | 独立した中央揃えのブロック | 番号付き数式、定理の記述 |
+| `inline` | 段落内のランに付加される `<m:oMath>` | 本文と一体化 | 地の文中の `if $x > 0$` のようなスタイル |
 
 ```bash
-# Display equation (own paragraph, centered) — explicitly set mode=display for clarity
+# 表示用数式（独立した段落、中央揃え）— わかりやすさのため明示的に mode=display を指定
 officecli add "$FILE" /body --type equation --prop mode=display --prop formula="x^2 + y^2 = z^2"
-# Display equation with Greek / subscript / integral — verify rendering below
+# ギリシャ文字・下付き・積分を含む表示用数式 — 下記でレンダリングを確認
 officecli add "$FILE" /body --type equation --prop mode=display --prop formula="\\lambda_1 + \\alpha"
 officecli add "$FILE" /body --type equation --prop mode=display --prop formula="\\frac{1}{2\\pi} \\int_0^{\\infty} e^{-x^2} dx"
-# Inline equation INSIDE prose — required whenever variables like x_{t+1}, \lambda, etc. appear in a body paragraph:
+# 地の文中のインライン数式 — 本文段落に x_{t+1}, \lambda などの変数が現れる場合は必須:
 officecli add "$FILE" /body --type paragraph --prop text="Given the weight " --prop size=11pt
 officecli add "$FILE" "/body/p[last()]" --type equation --prop mode=inline --prop formula="W_t"
 officecli add "$FILE" "/body/p[last()]" --type run --prop text=" we define the loss..."
 ```
 
-**Verify equations render as OMML math**, not plain-text LaTeX tokens. After `close`, run:
+**数式が（プレーンテキストの LaTeX トークンではなく）OMML 数式としてレンダリングされることを確認してください。** `close` の後、以下を実行します:
 ```bash
-officecli view "$FILE" text | head -20       # λ₁ + α, ∫₀∞, x² must appear as unicode math (verified renders)
-officecli raw "$FILE" /document | grep -c '<m:oMathPara'   # ≥ 1 per display equation
+officecli view "$FILE" text | head -20       # λ₁ + α、∫₀∞、x² は Unicode の数式として表示されなければならない（レンダリング確認済み）
+officecli raw "$FILE" /document | grep -c '<m:oMathPara'   # 表示用数式1つにつき ≥ 1
 ```
-If the body prose contains raw `lambda_1`, `x_{t+1}`, `\alpha` or similar plain-text tokens (i.e., you typed them into a `paragraph --prop text=` instead of wrapping with `--type equation --prop mode=inline`), downstream viewers will render them as literal ASCII. **Rule: every mathematical variable / Greek letter / subscript in prose goes through `--type equation mode=inline`, never through `paragraph --prop text=`.**
+本文の地の文に生の `lambda_1`、`x_{t+1}`、`\alpha` のようなプレーンテキストトークンが含まれている場合（つまり `--type equation --prop mode=inline` で包む代わりに `paragraph --prop text=` にそのまま入力してしまった場合）、下流のビューアーはそれをリテラルな ASCII としてレンダリングします。**ルール: 地の文中の数学変数・ギリシャ文字・下付き文字はすべて `--type equation mode=inline` を経由させ、`paragraph --prop text=` で書かないこと。**
 
-**LaTeX subset pitfalls** (non-negotiable):
+**LaTeX サブセットの落とし穴**（絶対厳守）:
 
-1. `\left(...\right)` / `\left[...\right]` with a sub/superscript **inside** the delimiters → parse error (`Error: cast object … Subscript`). An OUTER script (`\left(x+y\right)^2`) is fine; plain `(`, `)`, `[`, `]` always work and OMML auto-sizes them in display mode.
-2. `move` on `/body/oMathPara[N]` reorders the display equation (it repositions the wrapping paragraph). `--before <path>` may leave a stray empty paragraph; prefer `--index` or `--after` for a clean reorder.
+1. `\left(...\right)` / `\left[...\right]` の**内側**に上付き/下付きがある場合 → パースエラー（`Error: cast object … Subscript`）。**外側**のスクリプト（`\left(x+y\right)^2`）は問題ない。プレーンな `(`、`)`、`[`、`]` は常に動作し、OMML が表示モードで自動的にサイズ調整する。
+2. `/body/oMathPara[N]` に対する `move` は表示用数式の位置を並べ替える（囲んでいる段落を移動させる）。`--before <path>` は空の段落を残してしまうことがあるため、きれいに並べ替えるには `--index` か `--after` を使う方がよい。
 
-**Equation numbering** — no native `\eqno`. The journal-standard layout is **one line**: equation centered, number flush-right at the column edge (`Y = A(X) ⊗ X      (1)`). Build it with two paragraph **tab stops** — a `center` tab at the column mid-point and a `right` tab at the column right edge — then lay out `[tab] equation(inline) [tab] (1)` in a single paragraph. Do NOT use a centered display equation followed by a separate right-aligned `(1)` line — that splits the number onto its own line and is the most common reason agents fail to reproduce the expected look.
+**数式の番号付け** — ネイティブの `\eqno` はありません。ジャーナル標準のレイアウトは**一行**です: 数式を中央に、番号を列端に右揃えで配置（`Y = A(X) ⊗ X      (1)`）。これは段落の**タブストップ**二つ — 列の中間点にある `center` タブと列の右端にある `right` タブ — で構築し、一つの段落に `[tab] equation(inline) [tab] (1)` を並べます。中央揃えの表示用数式の後ろに別行の右揃え `(1)` を続ける方法は使わないでください — それでは番号が別の行に分かれてしまい、エージェントが期待通りの見た目を再現できない最も多い原因です。
 
 ```bash
-# Tab positions depend on the COLUMN width (twips). Default blank doc = A4, 3.18cm margins
-#   → text width = 8300 twips.
-#   single column: center tab = 4150, right tab = 8300
-#   two columns (default 720-twip gutter): col = (8300-720)/2 = 3790 → center 1895, right 3790
-# (other page size / margins: text width = pageWidth - marginLeft - marginRight; recompute.)
-officecli add "$FILE" /body --type paragraph                                   # the equation paragraph (say it lands at p[N])
+# タブ位置は列幅（twips）に依存する。デフォルトの空白文書 = A4、余白 3.18cm
+#   → 本文幅 = 8300 twips。
+#   単段組: center タブ = 4150、right タブ = 8300
+#   二段組（デフォルトの溝幅 720 twips）: 列幅 = (8300-720)/2 = 3790 → center 1895、right 3790
+# （他のページサイズ/余白の場合: 本文幅 = pageWidth - marginLeft - marginRight で再計算すること。）
+officecli add "$FILE" /body --type paragraph                                   # 数式段落（仮に p[N] に着地するとする）
 officecli add "$FILE" "/body/p[N]" --type tab --prop pos=4150 --prop val=center
 officecli add "$FILE" "/body/p[N]" --type tab --prop pos=8300 --prop val=right
-officecli add "$FILE" "/body/p[N]" --type run --prop text=$'\t'                 # tab → jump to center
+officecli add "$FILE" "/body/p[N]" --type run --prop text=$'\t'                 # タブ → 中央にジャンプ
 officecli add "$FILE" "/body/p[N]" --type equation --prop mode=inline --prop formula='Y = A(X) \otimes X'
-officecli add "$FILE" "/body/p[N]" --type run --prop text=$'\t(1)'             # tab → jump to right edge, then the number
+officecli add "$FILE" "/body/p[N]" --type run --prop text=$'\t(1)'             # タブ → 右端にジャンプし、その後に番号
 ```
 
-For a two-column section just use the two-column tab positions (1895 / 3790); the same paragraph then centers the equation within its column with `(1)` at the column's right edge. Schema: `officecli help docx tab`.
+二段組の節では、二段組用のタブ位置（1895 / 3790）を使うだけでよく、同じ段落が列内で数式を中央揃えにし、`(1)` を列の右端に配置します。スキーマ: `officecli help docx tab`。
 
-**Do NOT place `--type equation` directly on a table cell `tc[N]` path** — it is rejected with a guard error (`table cells only accept paragraphs, tables, or SDTs`), so no bad XML is written. Target `tc[N]/p[1]` with `mode=inline` if you need equations in cells.
+**`--type equation` を表セル `tc[N]` のパスに直接置かないこと** — ガードエラー（`table cells only accept paragraphs, tables, or SDTs`）で拒否され、不正な XML は書き込まれません。セル内に数式が必要な場合は `tc[N]/p[1]` を `mode=inline` で指定してください。
 
-Full equation schema: `officecli help docx equation`.
+完全な数式スキーマ: `officecli help docx equation`。
 
-## Figures, tables, and cross-references (SEQ + PAGEREF)
+## 図表と相互参照（SEQ + PAGEREF）
 
-Two primitives, both **native fieldTypes** (`officecli help docx field` for the enum): `seq` for auto-numbered caption counters, `pageref` for "see Fig. 2 on page 7" back-references. Native fields insert with an unevaluated cached result; a single `set "$FILE" / --prop recalcFields=seq` (see §SEQ numbering below) fills the real numbers in document order — no per-field patching.
+いずれも**ネイティブの fieldType**（`officecli help docx field` で列挙を確認）である二つのプリミティブ: 自動採番されるキャプションカウンターの `seq`、「7ページの図2参照」という背参照のための `pageref`。ネイティブフィールドは未評価のキャッシュ結果とともに挿入され、`set "$FILE" / --prop recalcFields=seq` を一度実行するだけで（下記 §SEQ 採番 参照）文書順に実際の番号が埋まります — フィールドごとの個別パッチは不要です。
 
-### SEQ auto-numbering — figures and tables
+### SEQ 自動採番 — 図と表
 
-A SEQ field is a counter with a name (`identifier`). Every `SEQ Figure` increments the Figure counter on **recalc**; every `SEQ Table` increments the Table counter.
+SEQ フィールドは名前（`identifier`）を持つカウンターです。すべての `SEQ Figure` は **recalc** のたびに Figure カウンターをインクリメントし、すべての `SEQ Table` は Table カウンターをインクリメントします。
 
-**SEQ cached values — one command, after all captions are added.** A freshly-added SEQ field has no evaluated cached number; `view text` shows the `#OCLI_NOTEVAL!{SEQ Figure}` sentinel (and `Format["evaluated"]=false`) until you recalc. **Do NOT patch each field by hand.** Once every figure/table caption is in place, run once:
+**SEQ のキャッシュ値 — すべてのキャプションを追加し終えたら一つのコマンドで。** 追加されたばかりの SEQ フィールドには評価済みのキャッシュ番号がなく、`view text` は recalc するまで `#OCLI_NOTEVAL!{SEQ Figure}` というセンチネル（および `Format["evaluated"]=false`）を表示します。**フィールドを一つずつ手でパッチしないこと。** すべての図表キャプションを配置し終えたら、一度だけ実行します:
 ```bash
 officecli set "$FILE" / --prop recalcFields=seq
 ```
-It counts `SEQ Figure` / `SEQ Table` fields in body document order and writes the real cached values (`Figure 1 / Figure 2 / Figure 3`), flipping `evaluated` true. Re-run it after inserting a caption mid-document so the numbers stay in sync. (Heading-relative `\s` and SEQ inside headers/footers defer to Word's own recompute — see `help docx document`.) Verify: `officecli view "$FILE" text` shows distinct ascending numbers.
+これは本文の文書順に `SEQ Figure` / `SEQ Table` フィールドをカウントし、実際のキャッシュ値（`Figure 1 / Figure 2 / Figure 3`）を書き込んで `evaluated` を true に反転させます。文書の途中にキャプションを挿入した後は、番号の同期を保つために再実行してください。（見出し相対の `\s` や、ヘッダー/フッター内の SEQ は Word 自身の再計算に委ねられます — see `help docx document`。）確認: `officecli view "$FILE" text` に明確に昇順の異なる番号が表示されること。
 
 ```bash
-# Figure with caption BELOW the image. Caption = "Figure <seq>: title" + optional bookmark for cross-ref.
+# 画像の下にキャプションを配置する図。キャプション = "Figure <seq>: title" + 相互参照用の任意のブックマーク。
 officecli add "$FILE" /body --type picture --prop src=arch.png --prop width=5in
 officecli set "$FILE" "/body/p[last()]/r[last()]" --prop alt="Model architecture: attention over time-series sensors"
-# Caption paragraph (below the figure, per academic convention)
+# キャプション段落（学術的慣習に従い図の下に配置）
 officecli add "$FILE" /body --type paragraph --prop text="Figure " --prop style=Caption --prop size=10pt --prop italic=true --prop align=center
 officecli add "$FILE" "/body/p[last()]" --type field --prop fieldType=seq --prop identifier=Figure
 officecli add "$FILE" "/body/p[last()]" --type run --prop text=": Attention-based anomaly detection model."
-# Bookmark the caption so other paragraphs can PAGEREF it
+# 他の段落が PAGEREF で参照できるようキャプションにブックマークを付与
 officecli add "$FILE" /body --type bookmark --prop name=fig_arch
-# (Numbers are filled later by a single `set / --prop recalcFields=seq`, after all captions exist.)
+# （番号は、すべてのキャプションが揃った後に一度の `set / --prop recalcFields=seq` で埋められる。）
 ```
 
-### PAGEREF — cross-reference by bookmark
+### PAGEREF — ブックマークによる相互参照
 
 ```bash
-# Cross-ref paragraph: "see Figure 1 on page X"
+# 相互参照段落: 「図1参照（Xページ）」
 officecli add "$FILE" /body --type paragraph --prop text="As shown in Figure 1 (see page " --prop size=11pt --prop lineSpacing=1.5x
 officecli add "$FILE" "/body/p[last()]" --type field --prop fieldType=pageref --prop name=fig_arch
 officecli add "$FILE" "/body/p[last()]" --type run --prop text=")."
 ```
 
-### Tables — caption ABOVE
+### 表 — キャプションは上に
 
 ```bash
-# Caption first (ABOVE the table), THEN the table
+# キャプションを先に（表の上に）、その後に表
 officecli add "$FILE" /body --type paragraph --prop text="Table " --prop style=Caption --prop size=10pt --prop italic=true --prop spaceAfter=6pt
 officecli add "$FILE" "/body/p[last()]" --type field --prop fieldType=seq --prop identifier=Table
 officecli add "$FILE" "/body/p[last()]" --type run --prop text=": Participant demographics (N=47)."
 officecli add "$FILE" /body --type table --prop rows=5 --prop cols=4 --prop width=100%
-# ... fill header + rows per docx v2 §Tables
+# ... docx v2 §Tables に従いヘッダーと行を埋める
 ```
 
-### Verify SEQ + PAGEREF fields landed
+### SEQ + PAGEREF フィールドが着地したことの確認
 
 ```bash
-# At least one SEQ Figure or SEQ Table in the body document part
-officecli raw "$FILE" /document | grep -c 'w:instrText[^>]*>[^<]*SEQ'   # expect ≥ 1
-officecli raw "$FILE" /document | grep -c 'w:instrText[^>]*>[^<]*PAGEREF' # 0 ok if no cross-refs
+# 本文の document パートに SEQ Figure または SEQ Table が少なくとも1つあること
+officecli raw "$FILE" /document | grep -c 'w:instrText[^>]*>[^<]*SEQ'   # ≥ 1 を期待
+officecli raw "$FILE" /document | grep -c 'w:instrText[^>]*>[^<]*PAGEREF' # 相互参照がなければ 0 でよい
 ```
 
-Live fields carry **cached values** that render stale until a human presses F9 in Word. Expect "Figure 1" to show as `1`, `2`, ... immediately after recalc; before recalc, some viewers render `0` or blank. Judge field presence by `fldChar` existence, not by visible digit (→ see docx v2 §Field / cached-value spot-check).
+ライブフィールドは、人間が Word で F9 を押すまで古びて見える**キャッシュ値**を持ちます。「Figure 1」は recalc 直後に `1`、`2`、... として表示されることを期待してください。recalc 前は、ビューアーによっては `0` や空白が表示されることがあります。フィールドの存在は、目に見える数字ではなく `fldChar` の存在で判断してください（→ see docx v2 §Field / cached-value spot-check）。
 
-## Footnotes vs endnotes
+## 脚注 vs 文末脚注
 
-**Footnote** — sits at the bottom of the page where its anchor paragraph lives. Used for source citations in Chicago Notes-Bib, content asides in any style.
+**脚注（Footnote）** — アンカーとなる段落が存在するページの下部に配置されます。Chicago Notes-Bib の出典引用や、どのスタイルにおける内容補足にも使われます。
 
-**Endnote** — sits at the end of the document (or before the bibliography). Used by some venues in place of footnotes, or for long contextual notes that would clutter the page.
+**文末脚注（Endnote）** — 文書の末尾（または参考文献の前）に配置されます。一部の会場で脚注の代わりに、あるいはページを煩雑にする長い文脈注に使われます。
 
 ```bash
-# Footnote anchored to paragraph N
+# 段落 N にアンカーされた脚注
 officecli add "$FILE" "/body/p[3]" --type footnote --prop text="Smith et al. reported similar findings in their 2023 review."
-# Endnote — anchored to paragraph N (like footnote); lands at /endnote[@endnoteId=N]
+# 文末脚注 — 段落 N にアンカー（脚注と同様）。/endnote[@endnoteId=N] に着地する
 officecli add "$FILE" "/body/p[3]" --type endnote --prop text="Extended derivation of equation (4) is available at the project repository."
 ```
 
-Both appear as empty-string runs in `view annotated` output (`r[N] ""`) — the run carries a `<w:footnoteReference>` XML element, not visible text. Confirm insertion with `officecli query "$FILE" 'footnote'` or `officecli get "$FILE" "/footnotes/footnote[N]"`. Footnotes do NOT shift paragraph indices; add them in any order after body content is in place. Full schema: `officecli help docx footnote` / `officecli help docx endnote`.
+どちらも `view annotated` の出力では空文字列のランとして表示されます（`r[N] ""`）— そのランは可視テキストではなく `<w:footnoteReference>` という XML 要素を持ちます。挿入の確認は `officecli query "$FILE" 'footnote'` または `officecli get "$FILE" "/footnotes/footnote[N]"` で行ってください。脚注は段落インデックスをずらしません — 本文の内容が揃った後、どの順序で追加しても構いません。完全なスキーマ: `officecli help docx footnote` / `officecli help docx endnote`。
 
-## Bibliography section
+## 参考文献セクション
 
-Every academic paper ends with a reference list. The name of the section depends on the style (**References** for APA / IEEE / Chicago Author-Date; **Bibliography** for Chicago Notes-Bib; **Works Cited** for MLA). Each entry is a separate paragraph with **hanging indent**.
+すべての学術論文は参考文献リストで終わります。セクション名はスタイルによって異なります（APA / IEEE / Chicago Author-Date は **References**、Chicago Notes-Bib は **Bibliography**、MLA は **Works Cited**）。各項目は**ぶら下げインデント**を持つ独立した段落です。
 
 ```bash
-# Section heading — same as body Heading1 (excluded from body numbering by convention)
+# セクション見出し — 本文の Heading1 と同じ（慣習により本文の番号付けから除外される）
 officecli add "$FILE" /body --type paragraph --prop text="References" --prop style=Heading1 --prop size=20pt --prop bold=true --prop spaceBefore=18pt --prop spaceAfter=12pt
-# Each entry: hanging indent 720 twips (0.5"), with indent=720 as the partner (first line flush, wraps indented)
+# 各項目: ぶら下げインデント 720 twips（0.5"）。indent=720 を対にする（一行目は左揃え、折り返しはインデント）
 officecli add "$FILE" /body --type paragraph --prop text="Smith, J. (2024). Remote work and cohesion. Journal of Applied Psychology, 109(3), 412-430." --prop size=12pt --prop lineSpacing=2x --prop indent=720 --prop hangingIndent=720
-# DOI hyperlink on its own run appended to the entry paragraph
+# 項目段落に付与する DOI ハイパーリンク（独立したランとして）
 officecli add "$FILE" "/body/p[last()]" --type hyperlink --prop url="https://doi.org/10.1037/apl0001123" --prop text="https://doi.org/10.1037/apl0001123"
 ```
 
-Verified: `--prop indent=720 --prop hangingIndent=720` is the canonical hanging-indent pair per `officecli help docx paragraph`. The old `ind.firstLine=-720` form (negative first-line indent) is NOT canonical and fails schema on emit — → see docx v2 §Schema-invalid-on-emit.
+検証済み: `--prop indent=720 --prop hangingIndent=720` は `officecli help docx paragraph` に基づく正規のぶら下げインデントのペアです。旧来の `ind.firstLine=-720`（負の一行目インデント）形式は正規ではなく、出力時にスキーマ検証に失敗します — → see docx v2 §Schema-invalid-on-emit。
 
-**Round-trip QA.** Count in-text citation markers (APA `(Author, Year)`, IEEE `[N]`, MLA `(Author N)`) vs reference-list entries. See Delivery Gate 4 below. Every cited key must resolve; every listed entry should be cited at least once.
+**ラウンドトリップ QA。** 文中引用マーカー（APA `(Author, Year)`、IEEE `[N]`、MLA `(Author N)`）と参考文献項目の件数を突き合わせてください。下記 Delivery Gate 4 を参照。引用されたすべてのキーは解決できなければならず、リストに載っているすべての項目は少なくとも一度は引用されているべきです。
 
-## Multi-column (IEEE journal two-column recipe)
+## 複数段組（IEEE ジャーナルの二段組レシピ）
 
-IEEE and many engineering / physics journals render body text in two columns with a single-column abstract above. The mechanism: a section break with `type=continuous` and `columns=2`, then another section break at the end to **revert** to single-column.
+IEEE や多くの工学・物理学系ジャーナルは、本文テキストを二段組でレンダリングし、その上に単段組の要旨を配置します。仕組み: `type=continuous` と `columns=2` を持つセクション区切り、そして文書末尾でもう一つのセクション区切りを入れて単段組に**戻す**。
 
-**The reversion step is not optional.** Without it, the rest of the document — including references — renders as two columns. This is the single most common multi-column failure.
+**この復元ステップは省略できません。** これを行わないと、参考文献を含む文書の残り全体が二段組でレンダリングされます。これが複数段組で最もよくある失敗です。
 
 ```bash
 FILE="ieee.docx"
 officecli create "$FILE"
 officecli open "$FILE"
 
-# 1. Title, authors, affiliation — single-column (the default first section)
+# 1. タイトル、著者、所属 — 単段組（デフォルトの最初のセクション）
 officecli add "$FILE" /body --type paragraph --prop text="Attention-Based Anomaly Detection for Industrial Time Series" --prop align=center --prop size=18pt --prop bold=true --prop spaceAfter=12pt
 officecli add "$FILE" /body --type paragraph --prop text="Alice Chen, Bob Martinez" --prop align=center --prop size=11pt
 officecli add "$FILE" /body --type paragraph --prop text="Department of CS, Stanford University" --prop align=center --prop size=10pt --prop spaceAfter=18pt
 
-# 2. Abstract — still single-column, block-style
+# 2. 要旨 — まだ単段組、ブロックスタイル
 officecli add "$FILE" /body --type paragraph --prop text="Abstract" --prop align=center --prop size=12pt --prop bold=true --prop spaceAfter=6pt
 officecli add "$FILE" /body --type paragraph --prop text="We present an attention-based model for detecting anomalies in industrial sensor time series..." --prop size=10pt --prop lineSpacing=1.15x --prop spaceAfter=12pt
 
-# 3. Section break + two-column from here on
-#    `/section[last()]` resolves to the final section (like p[last()]); an explicit /section[N] also works.
+# 3. セクション区切り + ここから二段組
+#    `/section[last()]` は最終セクションに解決される（p[last()] と同様）。明示的な /section[N] も動作する。
 officecli add "$FILE" /body --type section --prop type=continuous
 SECTION_COUNT=$(officecli query "$FILE" section --json | jq '.data.results | length')
-# After the add, SECTION_COUNT should be 2 — [1] is pre-break, [2] is post-break (2-col body area).
+# add の後、SECTION_COUNT は 2 になるはず — [1] が区切り前、[2] が区切り後（二段組の本文エリア）。
 officecli set "$FILE" "/section[2]" --prop columns=2 --prop columnSpace=1cm
 
-# 4. Body — IEEE wants Roman numerals + ALL CAPS section titles (P1.2).
+# 4. 本文 — IEEE はローマ数字 + 全て大文字の節タイトルを求める（P1.2）。
 officecli add "$FILE" /body --type paragraph --prop text="I. INTRODUCTION" --prop style=Heading1 --prop size=10pt --prop bold=true
 officecli add "$FILE" /body --type paragraph --prop text="Industrial anomaly detection has been studied since [1]..." --prop size=10pt --prop lineSpacing=1.15x --prop firstLineIndent=360
 
-# 5. At the end of 2-column body, ANOTHER section break + revert to single column for references / appendices
-# (If you want references in 2-col too, skip step 5 — but most IEEE papers use 2-col for references as well.)
+# 5. 二段組本文の末尾で、さらにセクション区切りを入れて参考文献/付録用に単段組へ戻す
+# （参考文献も二段組にしたい場合はステップ5をスキップ — ただしほとんどの IEEE 論文は参考文献も二段組。）
 # officecli add "$FILE" /body --type section --prop type=continuous
-# Use /section[last()] for the final section, or re-count for an explicit /section[N]:
+# 最終セクションには /section[last()] を使うか、明示的な /section[N] のため再カウントする:
 # officecli set "$FILE" "/section[3]" --prop columns=1
 
-# 6. Footer, close, validate
+# 6. フッター、close、検証
 officecli add "$FILE" / --type footer --prop type=default --prop align=center --prop size=9pt --prop field=page
 officecli close "$FILE"
 officecli validate "$FILE"
 ```
 
-**Visual verify.** Run `officecli view "$FILE" html` and Read the returned HTML to audit the rendered output. The abstract must render as full-width and the introduction onward as two columns. If the abstract wraps into two narrow columns, the first section break landed before the abstract — move it.
+**目視での検証。** `officecli view "$FILE" html` を実行し、返された HTML を Read でレンダリング結果を確認してください。要旨は全幅でレンダリングされ、序論以降は二段組でレンダリングされなければなりません。要旨が二つの狭い列に折り返されている場合は、最初のセクション区切りが要旨より前に着地しています — 移動してください。
 
-**Section index bookkeeping.** Each `add /body --type section` inserts one empty paragraph into `/body` (the section-break marker). All subsequent `p[N]` indices shift by +1 per section break. Plan section breaks in advance; after adding a break, `officecli get "$FILE" /body --depth 1` to re-index before continuing.
+**セクションのインデックス管理。** `add /body --type section` は一つの空段落を `/body` に挿入します（セクション区切りのマーカー）。以降のすべての `p[N]` インデックスはセクション区切り一つにつき +1 ずつシフトします。セクション区切りは事前に計画し、区切りを追加した後は `officecli get "$FILE" /body --depth 1` で再インデックスしてから続けてください。
 
-Full section schema (`columns`, `columnSpace`, `orientation`, `pageNumFmt`, `titlePage`, `lineNumbers`): `officecli help docx section`.
+完全なセクションスキーマ（`columns`、`columnSpace`、`orientation`、`pageNumFmt`、`titlePage`、`lineNumbers`）: `officecli help docx section`。
 
-## Abstract / keywords / affiliation block
+## 要旨 / キーワード / 所属ブロック
 
-First-page metadata stack: title (centered 20-22pt bold) → authors (centered 12pt, superscript `^1 ^2` for multi-affiliation) → affiliations (centered 11pt, keyed to superscripts) → submission target / date → **Abstract** heading (14pt bold) → abstract body (block-style, **NO `firstLineIndent`**, 150-300 words) → keywords line (italic 11pt). Same "cover ≥ 60% filled" rule as docx v2.
+一枚目のメタデータの積み重ね: タイトル（中央揃え 20-22pt bold）→ 著者（中央揃え 12pt、複数所属の場合は上付きの `^1 ^2`）→ 所属（中央揃え 11pt、上付き文字に紐づく）→ 投稿先/日付 → **Abstract** 見出し（14pt bold）→ 要旨本文（ブロックスタイル、**`firstLineIndent` なし**、150〜300語）→ キーワード行（斜体 11pt）。docx v2 と同じ「表紙は60%以上埋める」ルールが適用されます。
 
 ```bash
-# Superscript affiliation markers (multi-institution paper)
+# 上付きの所属マーカー（複数機関にまたがる論文）
 officecli add "$FILE" /body --type paragraph --prop text="Alice Chen" --prop align=center --prop size=12pt
 officecli add "$FILE" "/body/p[last()]" --type run --prop text="1" --prop superscript=true
 officecli add "$FILE" "/body/p[last()]" --type run --prop text=", Bob Martinez"
 officecli add "$FILE" "/body/p[last()]" --type run --prop text="2" --prop superscript=true
-# Running header (skip on cover via type=first empty header — see docx v2 §headers)
+# ランニングヘッダー（表紙ではスキップ — type=first の空ヘッダーで実現。see docx v2 §headers）
 officecli add "$FILE" / --type header --prop type=default --prop align=right --prop size=9pt --prop text="Short Running Title"
 ```
 
-**Nature-family 2-col abstract** is rare — if required, open a `section type=continuous columns=2` BEFORE the abstract heading; short abstracts (<100 words) leave ragged columns. **Mirrored odd/even headers** are exposed by the high-level API: `officecli set "$FILE" /settings --prop evenAndOddHeaders=true`, then add the even header with `--type header --prop type=even`. Full header schema: `officecli help docx header`.
+**Nature 系の二段組要旨**は稀ですが、必要な場合は Abstract 見出しの**前**に `section type=continuous columns=2` を開いてください。要旨が短い（100語未満）と列がガタガタになります。**奇数/偶数ページで異なるヘッダー**は高レベル API で公開されています: `officecli set "$FILE" /settings --prop evenAndOddHeaders=true` の後、`--type header --prop type=even` で偶数ページ用ヘッダーを追加します。完全なヘッダースキーマ: `officecli help docx header`。
 
-## QA — Delivery Gate (executable)
+## QA — Delivery Gate（実行可能）
 
-**Assume there are problems. Your job is to find them.** First render is almost never correct. Run this block before declaring done.
+**問題があると想定してください。あなたの仕事はそれを見つけることです。** 最初のレンダリングが正しいことはほとんどありません。完了と宣言する前に、このブロックを実行してください。
 
-### Gates 1-3 — inherited from docx v2
+### Gate 1〜3 — docx v2 から継承
 
-→ see docx v2 §Delivery Gate. Schema validate, token leak grep, live PAGE field structure. Copy-paste the docx v2 gate block first. Every check must print its success message.
+→ see docx v2 §Delivery Gate。スキーマ検証、トークン漏れの grep、ライブ PAGE フィールドの構造。まず docx v2 の Gate ブロックをそのままコピーして貼り付けてください。すべてのチェックが成功メッセージを表示しなければなりません。
 
-### Gate 4 — citation round-trip
+### Gate 4 — 引用のラウンドトリップ
 
-Every in-text citation key should resolve to a bibliography entry. Count mismatches = REJECT.
+すべての文中引用キーは参考文献項目に解決できなければなりません。件数の不一致 = REJECT。
 
 ```bash
-# IEEE example (bracketed numerics). Adjust regex for APA (Author, Year) or MLA (Author Page).
+# IEEE の例（角括弧の数字）。APA (Author, Year) や MLA (Author Page) では正規表現を調整すること。
 CITATIONS=$(officecli view "$FILE" text | grep -oE '\[[0-9]+\]' | sort -u | wc -l)
 ENTRIES=$(officecli query "$FILE" 'paragraph[hangingIndent]' --json | jq '.data.results | length')
 echo "In-text citation markers: $CITATIONS | Bibliography entries: $ENTRIES"
-# REJECT when citations exceed entries (cites without references). Entries > citations is allowed by some venues.
+# 引用数が参考文献数を上回る場合（引用のみで参考文献がない）は REJECT。参考文献数 > 引用数 は一部の会場では許容される。
 [ "$CITATIONS" -le "$ENTRIES" ] && echo "Gate 4 OK" || { echo "REJECT Gate 4: $CITATIONS in-text markers but only $ENTRIES bibliography entries"; exit 1; }
 ```
 
-### Gate 5a — SEQ presence + cached numbers distinct
+### Gate 5a — SEQ の存在 + キャッシュ番号が重複していないこと
 
-If the paper has any numbered figure or table, the body must carry live `SEQ` fields AND their cached values must show distinct ascending numbers (else `view text` and downstream viewers that don't recompute cached fields will show "Figure 1" for all).
+図または表に番号が振られている論文の場合、本文はライブな `SEQ` フィールドを持ち、かつそのキャッシュ値は重複のない昇順の番号を示さなければなりません（さもないと、`view text` やキャッシュフィールドを再計算しない下流のビューアーはすべてに「Figure 1」を表示してしまいます）。
 
 ```bash
-# Count SEQ fields via query (raw-grep collapses multi-matches on one XML line → undercounts).
+# query 経由で SEQ フィールドをカウントする（raw grep は一行の XML 上で複数マッチが潰れて過小カウントになる）。
 SEQ_COUNT=$(officecli query "$FILE" 'field[fieldType=seq]' --json | jq '.data.results | length')
 VISIBLE_FIG=$(officecli view "$FILE" text | grep -cE '(Figure|Table) [0-9]+')
 if [ "$VISIBLE_FIG" -gt 0 ] && [ "$SEQ_COUNT" -eq 0 ]; then
   echo "REJECT Gate 5a: $VISIBLE_FIG visible Figure/Table labels but 0 SEQ fields."
   exit 1
 fi
-# Cached values must be distinct. Run `set / --prop recalcFields=seq` once after all captions exist;
-# before recalc the fields render the #OCLI_NOTEVAL! sentinel, after recalc Figure 1 / Figure 2 / Figure 3:
+# キャッシュ値は重複してはならない。すべてのキャプションが揃った後に一度だけ `set / --prop recalcFields=seq` を実行すること。
+# recalc 前はフィールドが #OCLI_NOTEVAL! センチネルをレンダリングし、recalc 後は Figure 1 / Figure 2 / Figure 3 になる:
 DISTINCT=$(officecli view "$FILE" text | grep -oE '(Figure|Table) [0-9]+' | sort -u | wc -l)
 [ "$SEQ_COUNT" -le "$DISTINCT" ] && echo "Gate 5a OK (SEQ=$SEQ_COUNT, distinct=$DISTINCT)" || { echo "REJECT Gate 5a: $SEQ_COUNT SEQ fields but only $DISTINCT distinct rendered labels — run 'set \"$FILE\" / --prop recalcFields=seq'"; exit 1; }
 ```
 
-### Gate 5b — Visual audit via HTML preview (MANDATORY, not optional)
+### Gate 5b — HTML プレビューによる目視監査（必須、任意ではない）
 
-Gates 1–5a catch schema, token leaks, live-field presence, citation counts. **They do NOT catch physical assembly defects** — scrambled page order, a duplicated Abstract mid-document, three figures all labeled "Fig. 1" despite SEQ field presence, equation variables rendering as plain-text LaTeX (`lambda_1`, `x_{t+1}`) instead of math. Do not skip — Gates 1–5a pass ≠ visual OK.
+Gate 1〜5a はスキーマ、トークン漏れ、ライブフィールドの存在、引用数を捕捉します。**しかし物理的な組み立て上の欠陥は捕捉しません** — ページ順の入れ替わり、文書中盤での要旨の重複、SEQ フィールドが存在するのに3つの図がすべて「Fig. 1」とラベル付けされている、数式の変数が数式ではなくプレーンテキストの LaTeX（`lambda_1`、`x_{t+1}`）としてレンダリングされている、など。省略しないでください — Gate 1〜5a の合格は目視 OK を意味しません。
 
-Run `officecli view "$FILE" html` and Read the returned HTML path. For every page of the paper, answer:
+`officecli view "$FILE" html` を実行し、返された HTML パスを Read してください。論文のすべてのページについて、以下に答えてください:
 
-> (a) Are pages in logical academic sequence? (Title → Abstract → Keywords → Introduction → body → References — no forward jumps, no backward leaks.)
-> (b) Does the Abstract appear exactly once, not duplicated mid-document?
-> (c) Are Figure N / Table N labels distinct and ascending? (Fig. 1, Fig. 2, Fig. 3 — not all "Fig. 1". Same for tables.)
-> (d) Do equations render as math? (Italicized variables, Greek letters like λ / α, proper integrals / fractions — NOT plain-text `lambda_1`, `x_{t+1}`, `\int`.)
-> (e) For IEEE papers: are section titles ALL CAPS with Roman numerals (`I. INTRODUCTION`)? Are tables Roman (`Table I`, `Table II`)?
-> (f) For APA papers: are Level-1 headings centered bold and unnumbered (not `1. Introduction`)?
-> (g) Does every in-text "see Fig. N" / "see Table N" resolve to a figure/table that actually carries that number?
-> (h) Heading hierarchy visually distinct (size + weight) across H1 / H2 / H3?
+> (a) ページは論理的な学術的順序になっているか？（タイトル → 要旨 → キーワード → 序論 → 本文 → 参考文献 — 前方へのジャンプや後方への漏れがないこと。）
+> (b) 要旨は文書中に一度だけ現れるか、文書中盤で重複していないか？
+> (c) Figure N / Table N のラベルは重複なく昇順になっているか？（Fig. 1, Fig. 2, Fig. 3 — すべて「Fig. 1」になっていないこと。表も同様。）
+> (d) 数式は数式としてレンダリングされているか？（斜体化された変数、λ / α のようなギリシャ文字、適切な積分/分数 — プレーンテキストの `lambda_1`、`x_{t+1}`、`\int` ではないこと。）
+> (e) IEEE 論文の場合: 節タイトルはローマ数字付きの全て大文字（`I. INTRODUCTION`）になっているか？ 表はローマ数字（`Table I`、`Table II`）になっているか？
+> (f) APA 論文の場合: レベル1見出しは中央揃え太字で番号なし（`1. Introduction` になっていない）か？
+> (g) 文中の「see Fig. N」/「see Table N」はすべて、実際にその番号を持つ図/表に解決されるか？
+> (h) H1 / H2 / H3 を通じて見出し階層が視覚的に区別できる（サイズ + ウェイト）か？
 
-Report every instance. If even one defect is present → REJECT; do not deliver until fixed.
+見つけた欠陥はすべて報告してください。一つでも欠陥があれば → REJECT。修正するまで納品しないでください。
 
-**Human preview (optional).** If you want the user to visually preview the paper, run `officecli watch "$FILE"` for a live preview the user can open at their own discretion, or have them open the `.docx` directly in Word / WPS / Pages. For final visual verification, open the file in the target viewer.
+**人間によるプレビュー（任意）。** ユーザーに論文を目視でプレビューしてもらいたい場合は、`officecli watch "$FILE"` を実行してユーザーが任意のタイミングで開けるライブプレビューを提供するか、`.docx` を Word / WPS / Pages で直接開いてもらってください。最終的な目視確認では、対象のビューアーでファイルを開いてください。
 
-### Honest limit
+### 正直な限界
 
-`validate` catches schema errors, not academic-style errors. A document passes `validate` with APA citations in an IEEE paper, footnotes in a style that forbids them, or figures with hardcoded numbers that drift when a new figure is inserted. The gates above — especially Gate 4 (round-trip) and Gate 5 (SEQ presence) — are how you catch what validate cannot.
+`validate` はスキーマエラーを捕捉しますが、学術スタイル上のエラーは捕捉しません。IEEE 論文に APA 式の引用があっても、脚注を禁じているスタイルに脚注があっても、新しい図を挿入するとずれるハードコードされた番号の図があっても、文書は `validate` を通過します。上記の Gate — 特に Gate 4（ラウンドトリップ）と Gate 5（SEQ の存在）— が、`validate` では捕捉できないものを捕捉する手段です。
 
-## Known Issues & Pitfalls (academic-specific)
+## 既知の問題と落とし穴（学術固有）
 
-→ Base pitfalls (shell escape, `\$ \t \n` literals, table cell formatting order, page-break boundaries, `shd.fill` / `ind.firstLine` schema-invalid forms, TOC cached values, watermark two-step): see docx v2 §Known Issues & Pitfalls.
+→ 基本的な落とし穴（シェルエスケープ、`\$ \t \n` のリテラル、表セルの書式適用順、改ページの境界、`shd.fill` / `ind.firstLine` のスキーマ無効形式、TOC のキャッシュ値、透かしの二段階処理）については docx v2 §Known Issues & Pitfalls を参照。
 
-Academic-specific:
+学術固有の問題:
 
-- **`\left(...\right)` / `\left[...\right]` with a sub/superscript INSIDE the delimiters → parse error** (`cast object … Subscript`). An outer script (`\left(x+y\right)^2`) is fine. Use plain `(`, `)`, `[`, `]` — OMML auto-sizes in display mode.
-- **`move` on `/body/oMathPara[N]` reorders the equation** (the wrapping paragraph moves). `--before <path>` may leave a stray empty paragraph; prefer `--index` / `--after`.
-- **Section break +1 paragraph offset.** Each `add /body --type section` inserts one empty paragraph into `/body`. All `p[N]` indices after the break shift by +1. Plan breaks; after any `add section`, `officecli get "$FILE" /body --depth 1` to re-index.
-- **`/section[last()]` resolves to the final section** (mirrors `p[last()]`), for both get and set. An explicit `/section[N]` also works:
+- **`\left(...\right)` / `\left[...\right]` の内側に上付き/下付きがあるとパースエラーになる**（`cast object … Subscript`）。外側のスクリプト（`\left(x+y\right)^2`）は問題ない。プレーンな `(`、`)`、`[`、`]` を使うこと — OMML が表示モードで自動サイズ調整する。
+- **`/body/oMathPara[N]` に対する `move` は数式を並べ替える**（囲んでいる段落が移動する）。`--before <path>` は空の段落を残すことがあるため、`--index` / `--after` を推奨。
+- **セクション区切りによる +1 段落のオフセット。** `add /body --type section` はそれぞれ一つの空段落を `/body` に挿入する。区切り後のすべての `p[N]` インデックスは +1 ずつシフトする。区切りは計画的に行い、`add section` の後は `officecli get "$FILE" /body --depth 1` で再インデックスすること。
+- **`/section[last()]` は最終セクションに解決される**（get・set の両方で `p[last()]` と同様）。明示的な `/section[N]` も動作する:
   ```bash
   SECTION_COUNT=$(officecli query "$FILE" section --json | jq '.data.results | length')
-  # use /section[last()] for the final section, or an explicit /section[2], /section[3], ...
+  # 最終セクションには /section[last()] を使うか、明示的に /section[2]、/section[3]、... を使う
   ```
-  Each `add /body --type section` increments the count. Re-query after every break.
-- **Multi-column does NOT auto-revert.** After a `columns=2` section, you must add another section break and explicitly set `columns=1` on the new `/section[N]` (N = post-revert count) — otherwise the rest of the document, including references, renders as two columns. Verify with `officecli get "$FILE" "/section[N]"` for each N.
-- **`--type equation` on a `tc[N]` cell path is rejected with a guard error** (`table cells only accept paragraphs, tables, or SDTs`) — no bad XML is written. Inside a table cell, target `tc[N]/p[1]` with `--prop mode=inline` instead.
-- **SEQ caption numbers are filled by `set / --prop recalcFields=seq`** (run once after all captions exist), not by per-field raw-set patching. A pre-recalc SEQ field shows the `#OCLI_NOTEVAL!` sentinel in `view text`.
-- **Hanging-indent canonical form is `indent=720 hangingIndent=720`.** Not `ind.firstLine=-720`. The dotted form emits `<w:ind>` after `<w:jc>` and fails schema on emit.
-- **Footnote reference runs show as empty strings in `view annotated`.** The `<w:footnoteReference>` XML element has no visible text on the reference side; the note body lives in `/footnotes/footnote[N]`. Confirm with `officecli query "$FILE" 'footnote'`, not by eyeballing `view text`.
-- **Caption placement:** Table caption ABOVE the table; Figure caption BELOW the figure. Every major style (APA, Chicago, IEEE, MLA) agrees. Putting a Table caption below the table is an academic-style error, not a rendering issue — `validate` will not catch it.
-- **TOC cached rendering / shell-escape:** → see docx v2 §Table of Contents, §Shell escape.
+  `add /body --type section` のたびにカウントが増える。区切りのたびに再クエリすること。
+- **複数段組は自動的に元に戻らない。** `columns=2` のセクションの後は、別のセクション区切りを追加し、新しい `/section[N]`（N = 復元後のカウント）に明示的に `columns=1` を設定しなければならない — さもないと、参考文献を含む文書の残り全体が二段組でレンダリングされてしまう。各 N について `officecli get "$FILE" "/section[N]"` で確認すること。
+- **`tc[N]` のセルパスに対する `--type equation` はガードエラーで拒否される**（`table cells only accept paragraphs, tables, or SDTs`）— 不正な XML は書き込まれない。表セル内では、代わりに `tc[N]/p[1]` を `--prop mode=inline` で指定すること。
+- **SEQ キャプション番号は `set / --prop recalcFields=seq` で埋められる**（すべてのキャプションが揃った後に一度実行）ものであり、フィールドごとの raw-set パッチではない。recalc 前の SEQ フィールドは `view text` で `#OCLI_NOTEVAL!` センチネルを表示する。
+- **ぶら下げインデントの正規形は `indent=720 hangingIndent=720`。** `ind.firstLine=-720` ではない。ドット付きの形式は `<w:jc>` の後に `<w:ind>` を出力してしまい、出力時にスキーマ検証に失敗する。
+- **脚注参照のランは `view annotated` で空文字列として表示される。** 参照側の `<w:footnoteReference>` という XML 要素には可視テキストがなく、注釈本体は `/footnotes/footnote[N]` にある。`view text` を目で追うのではなく、`officecli query "$FILE" 'footnote'` で確認すること。
+- **キャプションの配置:** 表のキャプションは表の**上**、図のキャプションは図の**下**。主要なスタイル（APA、Chicago、IEEE、MLA）すべてがこの点で一致している。表のキャプションを表の下に置くのは学術スタイル上の誤りであり、レンダリングの問題ではない — `validate` はこれを捕捉しない。
+- **TOC のキャッシュレンダリング / シェルエスケープ:** → see docx v2 §Table of Contents, §Shell escape。
 
-## Renderer quirks (cross-viewer)
+## レンダラーの癖（ビューアー間の差異）
 
-→ see docx v2 §Renderer quirks. PAGE / TOC cached values, OMML baseline shifts, scheme colors — all identical quirks apply to academic papers. Before calling an equation or a citation marker broken, open the file in the user's target viewer (Word, WPS, Pages) — if it renders correctly there, it is a viewer quirk, not a skill defect.
+→ see docx v2 §Renderer quirks。PAGE / TOC のキャッシュ値、OMML のベースラインのずれ、テーマカラー — これらの癖はすべて学術論文にも同様に当てはまります。数式や引用マーカーが壊れていると判断する前に、ユーザーの対象ビューアー（Word、WPS、Pages）でファイルを開いてください — そこで正しくレンダリングされるなら、それはビューアーの癖であり、スキルの欠陥ではありません。
 
-## Help pointer
+## ヘルプへのポインタ
 
-When in doubt: `officecli help docx`, `officecli help docx <element>`, `officecli help docx <element> --json`. Help is the authoritative schema; this skill is the decision guide for academic deltas on top of docx v2.
+迷ったときは: `officecli help docx`、`officecli help docx <element>`、`officecli help docx <element> --json`。ヘルプが権威あるスキーマであり、このスキルは docx v2 の上に乗る学術的な差分についての判断ガイドです。

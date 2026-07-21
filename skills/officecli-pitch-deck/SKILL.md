@@ -1,128 +1,128 @@
 ---
 name: officecli-pitch-deck
-description: "Use this skill when the user is building a fundraising / investor pitch deck — seed, Series A / B / C, convertible note, SAFE round, strategic raise. Trigger on: 'pitch deck', 'investor deck', 'Series A deck', 'Series B deck', 'Series C deck', 'fundraising deck', 'seed pitch', 'VC deck', 'raising capital', 'term sheet presentation'. Output is a single .pptx. This skill is a scene layer on top of officecli-pptx — inherits every pptx v2 rule (visual floor, grid, palettes, connector canon, Delivery Gate). DO NOT invoke for a generic board review, sales deck, all-hands, or product launch — route those to officecli-pptx base."
+description: "このスキルは、ユーザーが資金調達 / 投資家向けピッチデッキを作成する際に使用する — シード、Series A / B / C、コンバーティブルノート、SAFE ラウンド、戦略的資金調達など。トリガーとなるキーワード: 'pitch deck'、'investor deck'、'Series A deck'、'Series B deck'、'Series C deck'、'fundraising deck'、'seed pitch'、'VC deck'、'raising capital'、'term sheet presentation'。出力は単一の .pptx。このスキルは officecli-pptx の上に乗るシーンレイヤーであり — pptx v2 のあらゆるルール（visual floor、グリッド、パレット、コネクタ規範、Delivery Gate）を継承する。一般的な取締役会レビュー、セールスデック、全社会議、製品ローンチには使用しないこと — それらは officecli-pptx ベースへルーティングする。"
 ---
 
-# OfficeCLI Pitch Deck Skill
+# OfficeCLI Pitch Deck スキル
 
-**This skill is a scene layer on top of `officecli-pptx`.** Every pptx hard rule — visual delivery floor (title ≥ 36pt / body ≥ 18pt / title ≥ 2× body), 12-column grid on 33.87×19.05cm, 4 canonical palettes, chart-choice decision table, connector canon (`shape` / `from` / `to` / `tailEnd=triangle`), shell escape, resident + batch, Delivery Gate 1–5a — is inherited, not re-taught. This file adds only what **fundraising** needs on top: stage diagnosis (A / B / C), 5 赛道 arc templates, 10 key-slide recipes (cover / problem / solution / market / product / model / traction / team / financials / ask), pitch-specific numbers convention, a VC ship-check, and a pitch-specific fresh-eyes Gate 6.
+**このスキルは `officecli-pptx` の上に乗るシーンレイヤーです。** pptx のハードルール — visual delivery floor（title ≥ 36pt / body ≥ 18pt / title ≥ 2× body）、33.87×19.05cm 上の 12 カラムグリッド、4 つの正規パレット、チャート選択の判断表、コネクタ規範（`shape` / `from` / `to` / `tailEnd=triangle`）、シェルエスケープ、resident + batch、Delivery Gate 1–5a — はすべて継承されるものであり、ここで再度教えるものではない。このファイルが追加するのは、**資金調達**特有に必要な部分だけ: ステージ診断（A / B / C）、5 つの業界別アーク・テンプレート、10 個のキースライド・レシピ（cover / problem / solution / market / product / model / traction / team / financials / ask）、ピッチ特有の数値表記規約、VC 向け出荷前チェック、そしてピッチ特有の fresh-eyes Gate 6 である。
 
-When the pptx base rules cover it, the text here says `→ see pptx v2 §X`. Read `skills/officecli-pptx/SKILL.md` first if you have not.
+pptx ベースのルールでカバーされている箇所は、本文中で `→ see pptx v2 §X` と表記する。まだ読んでいない場合は、先に `skills/officecli-pptx/SKILL.md` を読むこと。
 
-## Setup
+## セットアップ
 
-If `officecli` is missing:
+`officecli` が未インストールの場合:
 
 - **macOS / Linux**: `curl -fsSL https://d.officecli.ai/install.sh | bash`
 - **Windows (PowerShell)**: `irm https://d.officecli.ai/install.ps1 | iex`
 
-Verify with `officecli --version` (open a new terminal if PATH hasn't picked up). If install fails, download a binary from https://github.com/iOfficeAI/OfficeCLI/releases.
+`officecli --version` で確認する（PATH が反映されない場合は新しいターミナルを開くこと）。インストールに失敗する場合は https://github.com/iOfficeAI/OfficeCLI/releases からバイナリをダウンロードする。
 
-## ⚠️ Help-First Rule
+## ⚠️ ヘルプ優先ルール
 
-**This skill teaches what a fundraising deck requires, not every command flag.** When a prop name, enum value, or preset is uncertain, consult help BEFORE guessing.
+**このスキルは資金調達デックに何が必要かを教えるものであり、すべてのコマンドフラグを網羅するものではない。** プロパティ名、enum 値、プリセットが不確かな場合は、推測する前にヘルプを確認すること。
 
 ```bash
-officecli help pptx                          # All pptx elements
-officecli help pptx <element>                # Full schema (e.g. chart, shape, connector, picture)
-officecli help pptx <element> --json         # Machine-readable
+officecli help pptx                          # すべての pptx 要素
+officecli help pptx <element>                # 完全なスキーマ（例: chart, shape, connector, picture）
+officecli help pptx <element> --json         # 機械可読形式
 ```
 
-Help reflects the installed CLI version. When this skill and help disagree, **help wins.** Every `--prop X=` in this file has been grep-verified against `officecli help pptx <element>` — if help adds / renames a prop in a later version, trust help.
+ヘルプはインストール済みの CLI バージョンを反映する。このスキルとヘルプが食い違う場合は **ヘルプが優先する。** 本ファイル内のすべての `--prop X=` は `officecli help pptx <element>` に対して grep 検証済みだが、後続バージョンでヘルプがプロパティを追加・改名している場合はヘルプを信頼すること。
 
-## Mental Model & Inheritance
+## メンタルモデルと継承
 
-**Inherits pptx v2.** You should have read `skills/officecli-pptx/SKILL.md` first. This skill assumes you know how to: add slides + shapes + charts + connectors; address by `@name=` / `@id=`; quote paths; use `batch` heredocs; write `--prop tailEnd=triangle` on every flow connector; and run the 5-gate Delivery Gate. If any of those are unfamiliar, open a pptx v2 session before continuing.
+**pptx v2 を継承する。** 先に `skills/officecli-pptx/SKILL.md` を読んでいることが前提。このスキルは、スライド・シェイプ・チャート・コネクタの追加、`@name=` / `@id=` によるアドレッシング、パスのクォート、`batch` heredoc の使用、すべてのフローコネクタへの `--prop tailEnd=triangle` の記述、5 段階の Delivery Gate の実行方法を知っていることを前提とする。いずれかに不慣れな場合は、続行する前に pptx v2 セッションを開くこと。
 
-## Shell & Execution Discipline
+## シェル & 実行の規律
 
-**Shell quoting, incremental execution, `$FILE` convention** → see pptx v2 §Shell & Execution Discipline. Same rules verbatim — quote `[N]` paths, single-quote values containing `$` (including `$35M`, `$1.2B TAM` in a cover or ask slide), never hand-write `\$ \t \n` in executable examples, one command at a time. Examples below use `$FILE` (`FILE="deck.pptx"`).
+**シェルクォート、段階的実行、`$FILE` 規約** → pptx v2 §Shell & Execution Discipline を参照。ルールはそのまま同じ — `[N]` を含むパスはクォートし、`$` を含む値（カバーや ask スライドの `$35M`、`$1.2B TAM` を含む）はシングルクォートし、実行可能な例では `\$ \t \n` を手書きしない、コマンドは一度に一つずつ実行する。以下の例は `$FILE`（`FILE="deck.pptx"`）を使用する。
 
-**Single-quote every shape text containing `$`.** `--prop text="Series B · $35M"` (double quotes) is WRONG — zsh expands `$35M` → empty, deck renders `Series B · M` silently. `--prop text='Series B · $35M'` (single quotes) is right. This is the #1 pitch-deck shell-escape failure mode (`$35M`, `$18M ARR`, `$1.2B TAM` appear on cover/ask/financials/milestones). Gate 2 cannot detect a stripped `$35M` — no residue. Gate 2b catches common strip patterns; single-quoting PREVENTS them.
+**`$` を含むすべてのシェイプテキストはシングルクォートすること。** `--prop text="Series B · $35M"`（ダブルクォート）は誤り — zsh が `$35M` を展開して空文字になり、デックには `Series B · M` と何の警告もなく描画されてしまう。`--prop text='Series B · $35M'`（シングルクォート）が正しい。これはピッチデックのシェルエスケープ失敗モードの第 1 位である（`$35M`、`$18M ARR`、`$1.2B TAM` はカバー / ask / financials / milestones に登場する）。Gate 2 は取り除かれた `$35M` を検出できない — 痕跡が残らないためだ。Gate 2b は一般的な strip パターンを捕捉する。シングルクォートはそれらを未然に防ぐ。
 
-## What "pitch deck" means here (identity)
+## ここでの「ピッチデック」の定義（アイデンティティ）
 
-A pitch deck is a pptx with a **fundraising layer** on top: VC-oriented narrative arc, verifiable metrics, stage-appropriate data density, founder-credibility surface. Slides are consumed at ~3 seconds per slide in a live room — the pptx v2 rule. Pitch decks add a second constraint on top: **every slide carries one investable proposition**. If a slide is "interesting background" that doesn't move the ask forward, cut it. VCs will not. The base pptx rules still apply; pitch decks add six deltas:
+ピッチデックとは、**資金調達レイヤー**を重ねた pptx である: VC 志向のナラティブアーク、検証可能な指標、ステージに応じたデータ密度、創業者としての信頼性の演出。スライドはライブの場で 1 枚あたり約 3 秒で消費される — これは pptx v2 のルールだ。ピッチデックはその上にもう一つの制約を加える: **すべてのスライドは 1 つの投資可能な命題を運ぶ**。あるスライドが「興味深い背景情報」に過ぎず、ask を前に進めないなら、切り捨てること。VC はそうする。ベースの pptx ルールは引き続き適用され、ピッチデックはさらに 6 つの差分を加える:
 
-1. **Stage determines everything.** Series A / B / C each dictates slide count, narrative weight, which metrics are must-haves, and tolerance for unit-econ sophistication. A Series A deck with 6 pages of CAC/LTV math reads as over-packaged; a Series B deck missing unit econ reads as incomplete. Pick the stage first — everything downstream follows.
-2. **Narrative arc beats feature dump.** 10 essential slides in a fixed order: cover → problem → solution → market → product → model → traction → team → financials → ask. Out of order = VCs disengage.
-3. **Numbers are a contract.** TAM/SAM/SOM must be clean three-layer; CAC/LTV must have a payback line; ARR ≠ revenue; Use-of-Funds must be a four-bucket pie. Sloppy numbers = round dies.
-4. **Team slide carries prior companies.** Avatar grid alone reads as a student project. Add prior-company logos / names + one-line role. Without this, first-time founders look exactly like first-time founders.
-5. **Traction chart y-axis starts at 0.** A "hockey stick" starting at `y_min = 80% of current` is a visual lie — VCs who have seen 10,000 decks spot it in < 2 seconds.
-6. **The ask is a slide, not a footnote.** `$XX M` hero + four-bucket Use-of-Funds + runway length. "We're raising some money" is not an ask.
+1. **ステージがすべてを決定する。** Series A / B / C はそれぞれ、スライド枚数、ナラティブの重み、必須指標、ユニットエコノミクスの洗練度に対する許容度を決める。CAC/LTV の数式が 6 ページも続く Series A デックは過剰包装に見え、ユニットエコノミクスを欠く Series B デックは未完成に見える。まずステージを決めること — その後のすべてはそこから導かれる。
+2. **ナラティブアークはフィーチャーの羅列に勝る。** 10 の必須スライドを固定順序で: cover → problem → solution → market → product → model → traction → team → financials → ask。順序が狂えば VC は離脱する。
+3. **数値は契約である。** TAM/SAM/SOM はクリーンな三層構造でなければならず、CAC/LTV には payback の行が必要で、ARR ≠ revenue、Use-of-Funds は四分割の円グラフでなければならない。数値が雑ならラウンドは死ぬ。
+4. **チームスライドは過去の所属企業を運ぶ。** アバターグリッドだけでは学生プロジェクトに見える。過去の所属企業のロゴ / 名前 + 1 行の役割を加えること。これがないと、初めての創業者はまさに初めての創業者そのものに見えてしまう。
+5. **トラクションチャートの y 軸は 0 から始める。** 現在値の 80% を `y_min` とする「ホッケースティック」は視覚的な嘘であり — 1 万件のデックを見てきた VC は 2 秒未満で見抜く。
+6. **ask はスライドであり、脚注ではない。** `$XX M` の主役数値 + 四分割の Use-of-Funds + ランウェイ期間。「多少の資金を調達しています」は ask ではない。
 
-### Reverse handoff — when to go BACK to pptx base
+### 逆ハンドオフ — pptx ベースに戻るべきタイミング
 
-Stay in **pptx v2 base** for board reviews, all-hands, sales decks, product launches, training decks — anything not tied to raising capital. Use **this skill** only when: (a) the user mentions a specific round (seed / Series A / B / C) or a VC meeting, AND (b) the deck needs at least 4 of {problem, traction, team with credentials, Use-of-Funds, stage-appropriate unit econ, financial projections}.
+取締役会レビュー、全社会議、セールスデック、製品ローンチ、トレーニングデックなど — 資金調達に紐づかないものは **pptx v2 ベース**にとどまること。**このスキル**を使うのは、(a) ユーザーが特定のラウンド（シード / Series A / B / C）や VC ミーティングに言及しており、かつ (b) デックが {problem, traction, team with credentials, Use-of-Funds, stage-appropriate unit econ, financial projections} のうち少なくとも 4 つを必要とする場合のみ。
 
-If the user says "fundraising deck" but the context is a corporate BU quarterly ask, that is a board review. Route to pptx v2 Recipe (d) 10-slide blueprint. If the user says "board review" but the context is a small company raising a bridge round, route here.
+ユーザーが「資金調達デック」と言っていても、文脈が事業部門の四半期予算要求であれば、それは取締役会レビューである。pptx v2 Recipe (d) の 10 枚ブループリントへルーティングすること。逆にユーザーが「取締役会レビュー」と言っていても、文脈が小規模企業のブリッジラウンド調達であれば、こちらへルーティングすること。
 
-## Series A / B / C stage diagnosis (decision tool)
+## Series A / B / C ステージ診断（判断ツール）
 
-**Read this before writing a single command.** Pick the row that matches the user's description — everything downstream (slide count, which metrics, which recipes, what the team slide must show) derives from this one call.
+**コマンドを 1 つでも書く前にこれを読むこと。** ユーザーの説明に合致する行を選ぶ — それ以降のすべて（スライド枚数、必要な指標、使用するレシピ、チームスライドが何を示すべきか）はこの一回の判断から導出される。
 
-| Stage | Revenue band | Team | Slide count | Dominant narrative (weight) | Must-have data | Common red flag |
+| ステージ | 売上帯 | チーム | スライド枚数 | 支配的ナラティブ（比重） | 必須データ | よくあるレッドフラグ |
 |---|---|---|---|---|---|---|
-| **Seed** | $0 – $1M ARR (often pre-rev) | 2 – 8 FTE | 10 – 12 | Problem (30%) + Solution (25%) + Team (15%) + Market (15%) + Traction (15%) | Founder-market fit story; 1 – 2 design-partner / pilot logos; top-down TAM ok | Over-claiming traction (10 customers = "market proven") |
-| **Series A** | $1 – $5M ARR | 10 – 25 FTE | 12 – 16 | Problem (20%) + Solution (20%) + **Market "why now"** (15%) + Product (15%) + Traction (20%) + Team (10%) | PMF proof (NRR > 110%, low churn), bottom-up TAM/SAM, pipeline / pilots converted | Bottom-up TAM feels fabricated; CAC not yet meaningful but shown anyway |
-| **Series B** | $5 – $30M ARR | 30 – 100 FTE | 18 – 22 | **Traction + Unit econ (30%)** + Market + Product + Team + Financials (ask) | ARR curve starting at 0; NRR, CAC, LTV, payback (< 18 mo ideal); cohort retention; logo wall | No unit-econ slide; CAC payback > 24mo without explanation; Use-of-Funds missing % |
-| **Series C** | $30M+ ARR | 100+ FTE | 20 – 24 | **Financials + Scale + Moat (40%)** + Market expansion + Team depth | Multi-year GAAP, rule-of-40, GM trajectory, international expansion plan, defensibility | No moat slide; revenue growth without margin story; team slide has no prior CEO / CFO |
-| **Bridge / SAFE** | any | any | 8 – 10 | **Specific bridge reason** + runway math + commitments | Prior round context; specific milestone the bridge funds; committed investor amount | Treating a bridge like a Series A — too many slides dilutes the ask |
+| **Seed** | $0 – $1M ARR（多くはプレレベニュー） | 2 – 8 名 | 10 – 12 | Problem (30%) + Solution (25%) + Team (15%) + Market (15%) + Traction (15%) | Founder-market fit のストーリー; デザインパートナー / パイロットのロゴ 1 – 2 件; トップダウン TAM で可 | トラクションの過大主張（顧客 10 社 = 「市場実証済み」） |
+| **Series A** | $1 – $5M ARR | 10 – 25 名 | 12 – 16 | Problem (20%) + Solution (20%) + **Market「なぜ今か」** (15%) + Product (15%) + Traction (20%) + Team (10%) | PMF の証拠（NRR > 110%、低チャーン）、ボトムアップ TAM/SAM、パイプライン / パイロットの成約実績 | ボトムアップ TAM が作り話に見える; CAC/LTV がまだ意味を持たないのに提示されている |
+| **Series B** | $5 – $30M ARR | 30 – 100 名 | 18 – 22 | **Traction + Unit econ (30%)** + Market + Product + Team + Financials (ask) | 0 起点の ARR カーブ; NRR、CAC、LTV、payback（18 か月未満が理想）; コホートリテンション; ロゴウォール | ユニットエコノミクススライドがない; 説明なしに CAC payback が 24 か月超; Use-of-Funds に割合の記載がない |
+| **Series C** | $30M+ ARR | 100 名以上 | 20 – 24 | **Financials + Scale + Moat (40%)** + Market expansion + Team depth | 複数年 GAAP、Rule of 40、GM の推移、国際展開計画、防御可能性 | moat スライドがない; マージンのストーリーを伴わない売上成長; チームスライドに CEO / CFO の前職経験がない |
+| **Bridge / SAFE** | 任意 | 任意 | 8 – 10 | **具体的なブリッジの理由** + ランウェイ計算 + コミットメント | 前ラウンドの文脈; ブリッジ資金が達成するマイルストーン; コミット済み投資家額 | Series A のように扱う — スライドが多すぎて ask が薄まる |
 
-**Decision procedure.** From one or two user sentences ("Series B, $18M ARR, 120 customers, $35M raise"), pick exactly one stage row. All later choices in this skill reference your stage: which 赛道 template to pull, which recipes are mandatory vs optional, and which Delivery Gate 6 checks fire.
+**判断手順。** ユーザーの 1 ～ 2 文（「Series B、$18M ARR、顧客 120 社、$35M 調達」）から、ステージ行を 1 つだけ選ぶ。以降のこのスキル内の選択はすべて、あなたのステージ判断を参照する: どの業界別テンプレートを使うか、どのレシピが必須 / 任意か、Delivery Gate 6 のどのチェックが発火するか。
 
-**Corner cases.** Bridge rounds & convertibles between A → B are closer to A or B depending on whether the bridge milestone is "finish PMF" (A shape) or "hit unit-econ target" (B shape). "Extension" rounds at the same stage reuse the earlier stage's skeleton and add a one-slide "progress since last round" update.
+**コーナーケース。** A → B 間のブリッジラウンドやコンバーティブルは、ブリッジが「PMF を完成させる」（A 形状）ためのものか「ユニットエコノミクスの目標を達成する」（B 形状）ためのものかによって、A か B のどちらかに近い。同一ステージでの「エクステンション」ラウンドは、前ステージの骨格を再利用しつつ「前回ラウンド以降の進捗」1 枚を追加する。
 
-**Non-SaaS stage overrides.** The ARR / unit-econ shape of Series B fits SaaS. For other verticals, substitute revenue band + unit-econ equivalent + Gate 6.3 grep:
+**非 SaaS のステージ上書き。** Series B の ARR / ユニットエコノミクスの形は SaaS に合わせたものだ。他の業界では、売上帯 + ユニットエコノミクス相当指標 + Gate 6.3 の grep を置き換える:
 
-| Vertical | Revenue "band" at Series B | "Unit econ" equivalent | Gate 6.3 substitute |
+| 業界 | Series B 時点の売上「帯」 | 「ユニットエコノミクス」相当 | Gate 6.3 の代替 |
 |---|---|---|---|
-| **Bio / Clinical-stage** | pre-rev, 20–60 FTE | burn rate + runway to next milestone (IND / Ph1 readout / BLA) | `shape:contains("ORR")` OR `contains("Pipeline")` OR `contains("BLA")` OR `contains("runway")` ≥ 1 |
-| **Deep Tech / Frontier** | pre-rev or early pilot rev | technical milestones + TRL level + benchmark vs SoTA | `shape:contains("TRL")` OR `contains("benchmark")` ≥ 1 |
-| **Marketplace / Network** | GMV $10–100M | take rate + cohort retention + liquidity | `shape:contains("GMV")` + `contains("take rate")` ≥ 1 |
-| **Consumer hardware** | $2–15M revenue (shipped units) | contribution margin + repeat rate + blended CAC | `shape:contains("repeat")` OR `contains("contribution")` ≥ 1 |
+| **バイオ / 臨床段階** | プレレベニュー、20–60 名 | バーンレート + 次のマイルストーン（IND / Ph1 readout / BLA）までのランウェイ | `shape:contains("ORR")` OR `contains("Pipeline")` OR `contains("BLA")` OR `contains("runway")` ≥ 1 |
+| **ディープテック / フロンティア** | プレレベニューまたは初期パイロット売上 | 技術的マイルストーン + TRL レベル + SoTA 対比ベンチマーク | `shape:contains("TRL")` OR `contains("benchmark")` ≥ 1 |
+| **マーケットプレイス / ネットワーク** | GMV $10–100M | テイクレート + コホートリテンション + 流動性 | `shape:contains("GMV")` + `contains("take rate")` ≥ 1 |
+| **コンシューマーハードウェア** | $2–15M 売上（出荷台数ベース） | 貢献利益 + リピート率 + ブレンド CAC | `shape:contains("repeat")` OR `contains("contribution")` ≥ 1 |
 
-Substitute the analogue grep when running Gate 6.3 on these verticals. False WARN on SaaS CAC/LTV = expected; real concern = vertical-specific analogue present. Bio Series B decks especially: burn + runway-to-milestone IS the "unit econ" story.
+これらの業界で Gate 6.3 を実行する際は類似 grep に置き換えること。SaaS の CAC/LTV に対する誤検知 WARN は想定内; 真の懸念は業界特有の代替指標が存在するかどうかである。特にバイオの Series B デックでは、バーン + マイルストーンまでのランウェイこそが「ユニットエコノミクス」のストーリーになる。
 
-## 赛道 arc templates (5 families)
+## 業界別アーク・テンプレート（5 ファミリー）
 
-5 mainstream verticals. Each one has different slide weights because what VCs require as proof-of-concept differs. Pick the vertical row; the slide skeleton is a copy-able starting point. Slide counts assume the matching stage row above.
+主要な 5 業界。VC が概念実証として求める証明が業界ごとに異なるため、スライドの比重も異なる。業界の行を選ぶこと。スライド骨格はそのままコピーして使える出発点である。スライド枚数は上記の対応するステージ行を前提とする。
 
-### (1) B2B SaaS / Enterprise software
+### (1) B2B SaaS / エンタープライズソフトウェア
 
-Canonical arc — the template most of VC muscle memory is built on. Series B example (20 slides): cover · TL;DR · problem · problem evidence · solution · product loop · market TAM/SAM/SOM · **unit economics (CAC / LTV / payback / GM)** · ARR trajectory · retention cohort · logo wall · team · competitors · financials 4-year · ask. Must-have: unit-econ slide from Series A onward; logo wall from Series B onward.
+正規のアーク — VC の筋肉記憶の大半がこのテンプレートに基づいて形成されている。Series B の例（20 枚）: cover · TL;DR · problem · problem evidence · solution · product loop · market TAM/SAM/SOM · **ユニットエコノミクス（CAC / LTV / payback / GM）** · ARR trajectory · retention cohort · logo wall · team · competitors · financials 4-year · ask。必須: Series A 以降はユニットエコノミクススライド; Series B 以降はロゴウォール。
 
-### (2) Consumer (B2C app / consumer hardware / D2C)
+### (2) コンシューマー（B2C アプリ / コンシューマーハードウェア / D2C）
 
-Narrative-driven. Early-stage decks lean on **product-experience screenshots + founding story + "why now"** market timing; lighter on unit econ (which are usually weaker than SaaS). Series A example (14 slides): cover · hook (30-second product demo or 1-line vision) · problem (lived experience) · solution (product shots) · product-experience flow · "why now" market window · pre-order / crowdfunding / early-sales evidence · retention / engagement (DAU, D30) · market (top-down ok if bottom-up unreliable) · competitive positioning · founder story + team · press / endorsements · financials · ask. Must-have: product visuals on ≥ 3 slides; "why now" slide (window justification); engagement metric not just revenue.
+ナラティブ駆動。初期段階のデックは **プロダクト体験のスクリーンショット + 創業ストーリー + 「なぜ今か」**の市場タイミングに寄りかかる; ユニットエコノミクス（通常 SaaS より弱い）の比重は軽い。Series A の例（14 枚）: cover · hook（30 秒のプロダクトデモまたは 1 行のビジョン）· problem（実体験）· solution（プロダクト画像）· product-experience flow · 「なぜ今か」の市場ウィンドウ · 予約注文 / クラウドファンディング / 初期販売の実績 · retention / engagement（DAU、D30）· market（ボトムアップが信頼できない場合はトップダウンで可）· competitive positioning · founder story + team · press / endorsements · financials · ask。必須: プロダクトのビジュアルが 3 枚以上; 「なぜ今か」スライド（ウィンドウの正当化）; 売上だけでなくエンゲージメント指標。
 
-### (3) Deep Tech / Frontier tech (AI foundation models, quantum, climate hardware, robotics)
+### (3) ディープテック / フロンティアテック（AI 基盤モデル、量子、気候ハードウェア、ロボティクス）
 
-Technology credibility is the sell. Pre-revenue deep tech replaces "traction" with **technical milestones + defensibility**. Series B example (22 slides): cover · thesis (one-line "what changes if this works") · problem (current state of art) · solution (technical approach) · **technology architecture** · benchmarks vs SoTA · pipeline / TRL levels · market (long-tail) · business model · early commercial traction (pilots, LOIs) · IP / patents · team (usually PhD / ex-FAANG-research) · partners · financials · ask. Must-have: benchmark slide; IP slide; team slide dense with PhDs / prior-lab names.
+技術的信頼性こそが売りである。プレレベニューのディープテックは「トラクション」の代わりに **技術的マイルストーン + 防御可能性**を用いる。Series B の例（22 枚）: cover · thesis（「これが実現したら何が変わるか」を 1 行で）· problem（現在の技術水準）· solution（技術的アプローチ）· **技術アーキテクチャ** · SoTA 対比ベンチマーク · pipeline / TRL レベル · market（ロングテール）· business model · early commercial traction（パイロット、LOI）· IP / 特許 · team（通常は博士号 / 元 FAANG リサーチ）· partners · financials · ask。必須: ベンチマークスライド; IP スライド; 博士号や前所属研究室名を密に記載したチームスライド。
 
-### (4) Marketplace / Network business (two-sided platform, social, commerce)
+### (4) マーケットプレイス / ネットワークビジネス（双方向プラットフォーム、ソーシャル、コマース）
 
-Liquidity is the metric. Replace "unit econ" with **GMV + take rate + cohort retention + supply / demand balance**. Series A example (15 slides): cover · problem (friction in current supply-demand) · solution · product demo (both sides) · network effects diagram · early liquidity (first-week GMV, time-to-match) · cohort retention · geographic / category expansion plan · competitive positioning vs incumbents · take-rate model · team · financials · ask. Must-have: liquidity metric slide; cohort retention chart; network-effect diagram.
+流動性こそが指標である。「ユニットエコノミクス」の代わりに **GMV + テイクレート + コホートリテンション + 需給バランス**を用いる。Series A の例（15 枚）: cover · problem（現行の需給における摩擦）· solution · product demo（両サイド）· network effects diagram · early liquidity（初週の GMV、マッチングまでの時間）· cohort retention · geographic / category expansion plan · competitive positioning vs incumbents · take-rate model · team · financials · ask。必須: 流動性指標スライド; コホートリテンションチャート; ネットワーク効果図。
 
-### (5) Bio / Life sciences / Healthtech
+### (5) バイオ / ライフサイエンス / ヘルステック
 
-Regulatory pipeline IS the business. Replace "product roadmap" with **clinical pipeline + regulatory path + scientific evidence**. Series B example (22 slides): cover · unmet medical need · scientific rationale (mechanism of action) · preclinical / clinical data (ORR, safety, endpoints) · **pipeline chart** (candidates × stages × dates) · differentiation vs standard of care · IP / exclusivity · regulatory strategy (IND, BTD, fast-track) · market (prevalence × pricing) · commercial strategy (orphan / specialty / biosimilar) · partnerships / collaborations · team (CSO / CMO with prior FDA wins) · financials (burn to next milestone) · ask. Must-have: pipeline chart; clinical data slide; team slide with prior regulatory wins.
+規制上のパイプラインそのものが事業である。「プロダクトロードマップ」の代わりに **臨床パイプライン + 規制上の道筋 + 科学的エビデンス**を用いる。Series B の例（22 枚）: cover · unmet medical need · scientific rationale（作用機序）· preclinical / clinical data（ORR、安全性、エンドポイント）· **パイプラインチャート**（候補薬 × ステージ × 日付）· differentiation vs standard of care · IP / exclusivity · regulatory strategy（IND、BTD、fast-track）· market（有病率 × 価格設定）· commercial strategy（orphan / specialty / biosimilar）· partnerships / collaborations · team（過去に FDA 承認実績のある CSO / CMO）· financials（次のマイルストーンまでのバーン）· ask。必須: パイプラインチャート; 臨床データスライド; 過去の規制当局対応実績を持つチームスライド。
 
-**Cross-vertical rule.** You can mix elements across templates, but never drop a must-have from your primary vertical. A SaaS deck missing unit econ, a bio deck missing a pipeline chart, a marketplace deck missing a liquidity metric — each is an instant VC disqualification.
+**業界横断ルール。** テンプレート間で要素を混在させてもよいが、主要業界の必須項目を落としてはならない。ユニットエコノミクスを欠く SaaS デック、パイプラインチャートを欠くバイオデック、流動性指標を欠くマーケットプレイスデック — いずれも即座に VC から失格とされる。
 
-## Slide Patterns (layout canon)
+## スライドパターン（レイアウト規範）
 
-Patterns are **layout geometry**; recipes below are **narrative intent**. A slide picks one pattern for its visual shape (6 canonical ones below) and one recipe for what it argues (cover / problem / traction / ...). Multiple recipes can share one pattern — Problem / Why-Now / Traction-callout all lean on the 3-stat row (C.2). Pick the pattern first, then fill it with recipe content.
+パターンは**レイアウトの幾何構造**であり、以下のレシピは**ナラティブの意図**である。1 枚のスライドは、その視覚的な形として 1 つのパターン（下記 6 種の正規パターン）を選び、何を主張するかとして 1 つのレシピ（cover / problem / traction / ...）を選ぶ。複数のレシピが 1 つのパターンを共有できる — Problem / Why-Now / Traction-callout はいずれも 3-stat row（C.2）に依拠している。まずパターンを選び、次にレシピの内容で埋めること。
 
-**Speaker notes rule.** Every content slide (non-cover, non-closing) MUST carry speaker notes via `officecli add "$FILE" /slide[N] --type notes --prop text='…'`. Missing notes = not shippable — inherits pptx v2 §Hard rules (H7). Run `officecli help pptx notes` to confirm prop names before building.
+**スピーカーノートのルール。** すべてのコンテンツスライド（cover でも closing でもないもの）は、`officecli add "$FILE" /slide[N] --type notes --prop text='…'` によってスピーカーノートを必ず持たなければならない。ノートの欠落は出荷不可 — pptx v2 §Hard rules (H7) を継承する。プロパティ名を確認するには先に `officecli help pptx notes` を実行すること。
 
-**Pattern reuse discipline.** Never run the same pattern on two consecutive slides — even with different data, two identical geometries in a row read as a template loop. Alternate C.2 with C.4 or C.5b to break rhythm.
+**パターン再利用の規律。** 連続する 2 枚のスライドで同じパターンを使わないこと — データが異なっていても、同じ幾何構造が続くとテンプレートのループに見える。C.2 と C.4 または C.5b を交互に使ってリズムを崩すこと。
 
-**Vertical centering.** When a slide carries fewer elements than the pattern's maximum, nudge y-positions down 2–3cm to center the visual weight. Tables below assume full content.
+**垂直方向の中央寄せ。** スライドに含まれる要素がパターンの最大数より少ない場合、y 座標を 2 – 3cm 下げて視覚的な重心を中央に寄せること。以下の表はフルコンテンツを前提とする。
 
-### C.1 Title / Cover (dark gradient)
+### C.1 タイトル / カバー（ダークグラデーション）
 
-3–4 text shapes on a gradient fill. Slide 1 in every deck.
+グラデーション塗りの上に 3 – 4 個のテキストシェイプ。すべてのデックの 1 枚目。
 
 ```
 +----------------------------------+
@@ -135,17 +135,17 @@ Patterns are **layout geometry**; recipes below are **narrative intent**. A slid
 +----------------------------------+
 ```
 
-| Element | X | Y | Width | Height | Font / size |
+| 要素 | X | Y | 幅 | 高さ | フォント / サイズ |
 |---|---|---|---|---|---|
-| Title | 2cm | 5cm | 29.87cm | 4cm | serif bold, ≥ 36pt (44 typical) |
-| Tagline | 2cm | 10cm | 29.87cm | 2cm | sans 18–22pt |
-| Meta (round · $ · date) | 2cm | 13cm | 29.87cm | 1.5cm | sans 12–16pt |
+| Title | 2cm | 5cm | 29.87cm | 4cm | セリフ体太字、36pt 以上（44 が典型） |
+| Tagline | 2cm | 10cm | 29.87cm | 2cm | サンセリフ 18–22pt |
+| Meta (round · $ · date) | 2cm | 13cm | 29.87cm | 1.5cm | サンセリフ 12–16pt |
 
-**Use this when** the slide is the first one (Cover recipe 1) — 3-second identity grab. Background is a 180° linear gradient between two dark palette shades (e.g. Professional Navy `1E2761 → 0D1F35`). If the title wraps to 2 lines, **add height (4cm → 5cm), never drop font below 36pt** — sub-36pt on a pitch cover reads as timid regardless of content. Transition: fade.
+**使用場面。** そのスライドが 1 枚目（Cover レシピ 1）の場合 — 3 秒でのアイデンティティ把握。背景は 2 つのダークパレット色の間の 180° 線形グラデーション（例: Professional Navy `1E2761 → 0D1F35`）。タイトルが 2 行に折り返す場合は **高さを増やし（4cm → 5cm）、フォントを 36pt 未満に下げないこと** — ピッチのカバーで 36pt 未満は、内容に関わらず弱気に見える。トランジション: フェード。
 
-### C.2 3-Stat callout row
+### C.2 3-Stat コールアウト行
 
-Title + 3 big-number / label pairs across. The default for Problem / Why-Now / Traction-callout slides.
+Title + 3 個の大きな数字 / ラベルのペアを横並びに。Problem / Why-Now / Traction-callout スライドの既定パターン。
 
 ```
 +----------------------------------+
@@ -157,19 +157,19 @@ Title + 3 big-number / label pairs across. The default for Problem / Why-Now / T
 +----------------------------------+
 ```
 
-| Element | X | Y | Width | Height | Font / size |
+| 要素 | X | Y | 幅 | 高さ | フォント / サイズ |
 |---|---|---|---|---|---|
-| Title | 1.5cm | 1cm | 30.87cm | 3cm | serif bold ≥ 36pt |
-| Stat 1 number | 2cm | 5cm | 9cm | 4cm | serif bold 60–64pt |
-| Stat 1 label | 2cm | 9.5cm | 9cm | 2cm | sans ≥ 16pt (H4 floor) |
-| Stat 2 number / label | 12.5cm | (same) | 9cm | (same) | (same) |
-| Stat 3 number / label | 23cm | (same) | 9cm | (same) | (same) |
+| Title | 1.5cm | 1cm | 30.87cm | 3cm | セリフ体太字 36pt 以上 |
+| Stat 1 number | 2cm | 5cm | 9cm | 4cm | セリフ体太字 60–64pt |
+| Stat 1 label | 2cm | 9.5cm | 9cm | 2cm | サンセリフ 16pt 以上（H4 floor） |
+| Stat 2 number / label | 12.5cm | (同上) | 9cm | (同上) | (同上) |
+| Stat 3 number / label | 23cm | (同上) | 9cm | (同上) | (同上) |
 
-**Use this when** you have 2–3 anchoring numbers and the story is "three facts argue the point" — Problem, Why-Now, Market-callout, single-row Traction. Labels ≥ 16pt is the H4 floor (sub-label exception); a number without a label reads as bravado, so never drop labels to 12–14pt to fit more text.
+**使用場面。** アンカーとなる数字が 2 – 3 個あり、「3 つの事実が論点を主張する」ストーリーの場合 — Problem、Why-Now、Market-callout、単一行の Traction。ラベル 16pt 以上は H4 floor（サブラベルの例外）; ラベルのない数字ははったりに見えるので、より多くのテキストを収めるためにラベルを 12–14pt に落としてはならない。
 
-### C.3 4-Stat callout row
+### C.3 4-Stat コールアウト行
 
-Same geometry as C.2 but 4 columns. Numbers 60pt, width 7cm each.
+C.2 と同じ幾何構造だが 4 列。数字は 60pt、幅は各 7cm。
 
 ```
 +-------------------------------------+
@@ -180,19 +180,19 @@ Same geometry as C.2 but 4 columns. Numbers 60pt, width 7cm each.
 +-------------------------------------+
 ```
 
-| Element | X positions | Y | Width | Height | Font / size |
+| 要素 | X 位置 | Y | 幅 | 高さ | フォント / サイズ |
 |---|---|---|---|---|---|
-| Title | 1.5cm | 1cm | 30.87cm | 3cm | serif bold 36pt |
-| Stat numbers | 1.5 / 9.5 / 17.5 / 25.5cm | 5cm | 7cm | 4cm | serif bold 60pt |
-| Stat labels | (same X) | 9.5cm | 7cm | 2cm | sans ≥ 16pt |
+| Title | 1.5cm | 1cm | 30.87cm | 3cm | セリフ体太字 36pt |
+| Stat numbers | 1.5 / 9.5 / 17.5 / 25.5cm | 5cm | 7cm | 4cm | セリフ体太字 60pt |
+| Stat labels | (同 X) | 9.5cm | 7cm | 2cm | サンセリフ 16pt 以上 |
 
-**Use this when** exactly 4 parallel metrics tell the story and 3 feels under-counted. Prefer C.2 if in doubt — 4 always feels tighter than 3, and wrap risk is real.
+**使用場面。** ちょうど 4 つの並列指標がストーリーを語り、3 では説明不足に感じる場合。迷ったら C.2 を優先すること — 4 は常に 3 より窮屈に感じられ、折り返しリスクも現実にある。
 
-> **Wrap warning.** At 60pt in 7cm width, dollar patterns with both `$` and `.` fail: `$9.4M` is 5 glyphs but the wide `$` and `.` in a serif bold make it wrap to 2 lines and destroy the callout. Safe dollar shapes at 60pt/7cm: `$9M`, `$96B`, `$4K` (3–4 chars). Non-dollar shapes: `340%`, `4.2x`, `12.3` safe up to 5 chars. Values ≥ 6 chars (`197min`, `3 Days`) will wrap — either (a) drop font to 44–48pt, (b) abbreviate (`197m`, `$9M`), or (c) shift to C.2 (9cm per stat). Single tokens only, no internal spaces.
+> **折り返し警告。** 幅 7cm で 60pt の場合、`$` と `.` の両方を含むドル表記は失敗する: `$9.4M` は 5 文字だが、セリフ体太字での幅広い `$` と `.` により 2 行に折り返り、コールアウトが崩れる。60pt/7cm で安全なドル表記の形: `$9M`、`$96B`、`$4K`（3 – 4 文字）。ドル以外の形: `340%`、`4.2x`、`12.3` は 5 文字まで安全。6 文字以上の値（`197min`、`3 Days`）は折り返る — (a) フォントを 44–48pt に落とす、(b) 略記する（`197m`、`$9M`）、(c) C.2（1 stat あたり 9cm）に切り替える、のいずれかを行うこと。単一トークンのみ、内部にスペースを含めないこと。
 
-### C.4 Chart + Context (chart left, stats right)
+### C.4 チャート + コンテキスト（左にチャート、右に stats）
 
-Chart takes left 55%, 2–3 stacked callouts on the right. The default for Traction / Financials / Market-sizing-with-context.
+チャートが左 55% を占め、右側に 2 – 3 個のスタック型コールアウト。Traction / Financials / コンテキスト付き Market-sizing の既定パターン。
 
 ```
 +-------------------------------------+
@@ -206,19 +206,19 @@ Chart takes left 55%, 2–3 stacked callouts on the right. The default for Tract
 +-------------------------------------+
 ```
 
-| Element | X | Y | Width | Height |
+| 要素 | X | Y | 幅 | 高さ |
 |---|---|---|---|---|
 | Title | 2cm | 1cm | 29.87cm | 3cm |
 | Chart | 2cm | 4cm | 17cm | 13cm |
-| Stats column | 21cm | 4cm+ | 11cm | 2.5cm number + 1.5cm label (~3.7cm per pair) |
+| Stats column | 21cm | 4cm+ | 11cm | 数字 2.5cm + ラベル 1.5cm（ペアあたり約 3.7cm） |
 
-Sub-labels ≥ 16pt (H4 floor). For 5 stats stacked, drop number size to 44pt; 6+ stats means pick a different pattern. Post-batch for column/bar charts: `officecli set "$FILE" "/slide[N]/chart[1]" --prop gap=80` to tighten bar spacing.
+サブラベルは 16pt 以上（H4 floor）。stats が 5 個スタックされる場合は数字サイズを 44pt に落とす; 6 個以上なら別のパターンを選ぶこと。カラム / バーチャートのバッチ後処理: `officecli set "$FILE" "/slide[N]/chart[1]" --prop gap=80` でバー間隔を詰める。
 
-**Use this when** one primary chart drives the story and 2–3 numeric anchors reinforce it — Traction (ARR curve + current ARR + YoY + NRR), Financials (4-year column chart + assumption callouts), Market (bar chart + SOM / CAGR / methodology).
+**使用場面。** 1 つの主要チャートがストーリーを牽引し、2 – 3 個の数値アンカーがそれを補強する場合 — Traction（ARR カーブ + 現在の ARR + YoY + NRR）、Financials（4 年分のカラムチャート + 前提のコールアウト）、Market（バーチャート + SOM / CAGR / 手法）。
 
-### C.5 Icon-in-circle grid (3-row vertical)
+### C.5 円アイコングリッド（3 行縦並び）
 
-3 vertical rows, each = circle icon on the left + title + 1-line description.
+3 行の縦並び、それぞれ = 左に円形アイコン + タイトル + 1 行の説明。
 
 ```
 +---------------------------------------+
@@ -235,17 +235,17 @@ Sub-labels ≥ 16pt (H4 floor). For 5 stats stacked, drop number size to 44pt; 6
 +---------------------------------------+
 ```
 
-| Element | X | Y positions | Width | Height | Font / size |
+| 要素 | X | Y 位置 | 幅 | 高さ | フォント / サイズ |
 |---|---|---|---|---|---|
-| Icon circle | 2cm | 4.5 / 8.5 / 12.5cm | 2.5cm | 2.5cm | ellipse, accent fill |
-| Label | 5.5cm | (icon Y + 0) | 25cm | 1.2cm | sans bold 18pt |
-| Description | 5.5cm | (icon Y + 1.3cm) | 25cm | 1.8cm | sans ≥ 16pt (H4 floor), muted |
+| Icon circle | 2cm | 4.5 / 8.5 / 12.5cm | 2.5cm | 2.5cm | 楕円、アクセント塗り |
+| Label | 5.5cm | (icon Y + 0) | 25cm | 1.2cm | サンセリフ太字 18pt |
+| Description | 5.5cm | (icon Y + 1.3cm) | 25cm | 1.8cm | サンセリフ 16pt 以上（H4 floor）、ミュートトーン |
 
-**Use this when** you have 3 short vertical points that benefit from a visual anchor per row — Solution mechanism, Value pillars, Product loop. Choose C.5b (2×2 grid) when items are parallel and you have exactly 4; choose a horizontal 5-across variant when icons should read side-by-side (e.g. 5-step process).
+**使用場面。** 短い縦の要点が 3 つあり、行ごとに視覚的アンカーがあると効果的な場合 — Solution mechanism、Value pillars、Product loop。項目が並列でちょうど 4 個ある場合は C.5b（2×2 グリッド）を選ぶこと; アイコンを横並びに見せたい場合（例: 5 ステップのプロセス）は横型 5 列バリアントを選ぶこと。
 
-### C.5b 2×2 Feature grid (4 parallel items)
+### C.5b 2×2 フィーチャーグリッド（4 並列項目）
 
-4 rounded cards, 2 columns × 2 rows. Use when you have exactly 4 parallel items (product pillars, service types, feature quadrants).
+角丸カード 4 枚、2 列 × 2 行。ちょうど 4 個の並列項目（プロダクトの柱、サービス種別、フィーチャーの四象限）がある場合に使用する。
 
 ```
 +-----------------------------+
@@ -262,36 +262,36 @@ Sub-labels ≥ 16pt (H4 floor). For 5 stats stacked, drop number size to 44pt; 6
 +-----------------------------+
 ```
 
-| Element | X | Y | Width | Height | Font / size |
+| 要素 | X | Y | 幅 | 高さ | フォント / サイズ |
 |---|---|---|---|---|---|
-| Slide title | 2cm | 1cm | 29.87cm | 2.5cm | serif bold 32pt |
+| Slide title | 2cm | 1cm | 29.87cm | 2.5cm | セリフ体太字 32pt |
 | Card 1 bg (top-left) | 1.5cm | 4cm | 14.5cm | 7cm | roundRect |
 | Card 2 bg (top-right) | 17.5cm | 4cm | 14.5cm | 7cm | roundRect |
 | Card 3 bg (bottom-left) | 1.5cm | 12cm | 14.5cm | 7cm | roundRect |
 | Card 4 bg (bottom-right) | 17.5cm | 12cm | 14.5cm | 7cm | roundRect |
 | Icon ellipse (each card) | card_x + 0.5cm | card_y + 0.5cm | 2cm | 2cm | — |
-| Card title (each) | card_x + 3.2cm | card_y + 0.6cm | 10.5cm | 1.8cm | sans bold 16pt |
-| Card body (each) | card_x + 0.5cm | card_y + 3cm | 13cm | 3.5cm | sans ≥ 16pt (H4 floor) |
+| Card title (each) | card_x + 3.2cm | card_y + 0.6cm | 10.5cm | 1.8cm | サンセリフ太字 16pt |
+| Card body (each) | card_x + 0.5cm | card_y + 3cm | 13cm | 3.5cm | サンセリフ 16pt 以上（H4 floor） |
 
-**Use this when** you have exactly 4 parallel items and the eye should land on each equally — 4 product pillars, 4 service tiers, 4 stakeholder types. 3 items feel lonely in a 2×2; 5+ items break the grid — go to a 3×2 (see pptx v2 §(d) grid math) or C.5 row pattern.
+**使用場面。** ちょうど 4 個の並列項目があり、視線が均等に各要素へ向くべき場合 — 4 つのプロダクトの柱、4 つのサービス層、4 種のステークホルダー。3 項目では 2×2 の中で寂しく見え、5 項目以上ではグリッドが崩れる — 3×2 に移行する（pptx v2 §(d) グリッド数学を参照）か、C.5 の行パターンを使うこと。
 
-> **Z-order canon (critical).** Each card's `roundRect` background must be added immediately before that card's icon / title / body shapes in the batch JSON — pptx paints in insertion order, so a background added after its text paints over and hides the text. When building with `officecli batch`, follow the per-card sequence `bg → ellipse → title → body` strictly. Pattern and z-order details → see pptx v2 §Recipe (c) z-order canon; reuse grid math from pptx v2 §(d) for non-2×2 counts.
+> **Z-order 規範（重要）。** 各カードの `roundRect` 背景は、そのカードのアイコン / タイトル / 本文シェイプの直前にバッチ JSON 内で追加しなければならない — pptx は挿入順に描画するため、テキストの後に追加された背景はテキストを覆い隠してしまう。`officecli batch` で構築する際は、カード単位の順序 `bg → ellipse → title → body` を厳守すること。パターンと z-order の詳細 → pptx v2 §Recipe (c) z-order canon を参照; 2×2 以外の個数の場合は pptx v2 §(d) からグリッド数学を再利用すること。
 
-**Dark-background variant.** Change card fill from `F0F4F8` (light) to a lighter-dark shade like `1A2540` and bump body text to `FFFFFF` / `E8E8E8`. Palette variables (e.g. `$MUTED`) do NOT expand inside single-quoted heredocs — write the literal hex (`64748B`) in the JSON.
+**ダーク背景バリアント。** カード塗りを `F0F4F8`（明色）から `1A2540` のような明るめのダーク色に変更し、本文テキストを `FFFFFF` / `E8E8E8` に上げる。パレット変数（例: `$MUTED`）はシングルクォート heredoc の中では展開されない — JSON 内には 16 進数のリテラル（`64748B`）を直接書くこと。
 
 ---
 
-## Key-slide recipes (10 essentials)
+## キースライドレシピ（10 の必須要素）
 
-The 10 slides every pitch deck carries. Each recipe below gives: **visual outcome** (what the slide looks like from 3m away) + **runnable block** (≤ 18 lines) + **QA one-liner**. All recipes inherit pptx v2 palettes, grid math, type hierarchy, and `--prop tailEnd=triangle` on every connector. Recipes reference the Slide Patterns above: Cover reuses C.1; Problem / Why-Now reuse C.2; Traction / Financials reuse C.4; Feature / pillar slides reuse C.5b. `$FILE` is your deck file.
+すべてのピッチデックが持つ 10 枚のスライド。以下の各レシピは: **視覚的成果**（3m 離れて見たときのスライドの見え方）+ **実行可能なブロック**（18 行以内）+ **QA ワンライナー**を示す。すべてのレシピは、pptx v2 のパレット、グリッド数学、タイプ階層、すべてのコネクタへの `--prop tailEnd=triangle` を継承する。レシピは上記のスライドパターンを参照する: Cover は C.1 を再利用; Problem / Why-Now は C.2 を再利用; Traction / Financials は C.4 を再利用; Feature / pillar スライドは C.5b を再利用。`$FILE` はあなたのデックファイル。
 
-**Long-title wrap rule.** A 36pt+ title that wraps to 2 lines: add `height` (e.g. 2cm → 3.5cm) — never drop the font below 36pt. Titles < 36pt on a pitch deck read as timid regardless of content.
+**長いタイトルの折り返しルール。** 36pt 以上のタイトルが 2 行に折り返る場合: `height` を増やす（例: 2cm → 3.5cm）— フォントを 36pt 未満に下げないこと。ピッチデックで 36pt 未満のタイトルは、内容に関わらず弱気に見える。
 
-> **Chart `series1.color=` on `add` works** (applies to every chart recipe below). Passing `--prop series1.color=` (or `series2.color=`, …) on chart `add` applies the series color and exits 0. Verify with a readback if you like: `officecli get "$FILE" "/slide[N]/chart[1]/series[1]" --json | jq '.data.results[0].format.color'`.
+> **チャートの `series1.color=` は `add` で機能する**（以下のすべてのチャートレシピに適用される）。`--prop series1.color=`（または `series2.color=`、…）をチャート `add` に渡すと、シリーズカラーが適用され exit 0 で終了する。気になる場合は読み戻しで確認できる: `officecli get "$FILE" "/slide[N]/chart[1]/series[1]" --json | jq '.data.results[0].format.color'`。
 
-### (1) Cover slide — company · tagline · round · date
+### (1) カバースライド — 会社名 · タグライン · ラウンド · 日付
 
-**Visual outcome.** Dark navy fill, centered 44pt company name, 20pt one-line tagline underneath, small 16pt meta line at the bottom with round + amount + date. Thin brand band at the very bottom (0.5cm high) in the accent color.
+**視覚的成果。** ダークネイビーの塗り、中央揃えの 44pt 会社名、その下に 20pt の 1 行タグライン、下部にラウンド + 金額 + 日付を記した小さな 16pt のメタ行。最下部にはアクセントカラーの薄いブランドバンド（高さ 0.5cm）。
 
 ```bash
 officecli add "$FILE" / --type slide --prop layout=blank --prop background=1E2761
@@ -309,15 +309,15 @@ officecli add "$FILE" "/slide[1]" --type shape --prop name=CoverMeta --prop text
   --prop font=Calibri --prop size=16 --prop color=FFFFFF --prop align=center --prop fill=none
 ```
 
-**QA.** Cover has 4 discrete elements (brand band + title + tagline + meta). 80%-whitespace covers fail the pptx "cover ≥ 60% filled" floor.
+**QA。** カバーには 4 つの独立した要素がある（ブランドバンド + タイトル + タグライン + メタ）。余白 80% のカバーは pptx の「カバー充填率 60% 以上」floor に違反する。
 
-**Consumer variant (3-second grab).** Consumer decks (B2C app / hardware / D2C) should add a single dominant motif — hero product shot, oversized company name (60–96pt), or symbolic mark (crescent moon / abstract geometric). Replace the 44pt title with an 80–96pt name + one motif shape (`--type shape --prop geometry=ellipse --prop fill=<accent>` for an abstract mark, or `picture` at ~40% of slide for a product hero). Keep tagline + round + date identical. SaaS / B2B may skip — the typographic-only cover is sufficient.
+**コンシューマー・バリアント（3 秒での把握）。** コンシューマーデック（B2C アプリ / ハードウェア / D2C）は、1 つの支配的なモチーフ — ヒーロープロダクト写真、超大型の会社名（60–96pt）、または象徴的なマーク（三日月 / 抽象幾何形状）— を加えるべきである。44pt のタイトルを、80–96pt の名前 + 1 個のモチーフシェイプ（抽象マークには `--type shape --prop geometry=ellipse --prop fill=<accent>`、プロダクトヒーローにはスライドの約 40% を占める `picture`）に置き換えること。タグライン + ラウンド + 日付はそのまま。SaaS / B2B は省略してよい — タイポグラフィのみのカバーで十分。
 
-### (2) Problem slide — industry pain in 1 sentence + 3 data cards
+### (2) Problem スライド — 業界の痛みを 1 文で + 3 個のデータカード
 
-**Visual outcome.** 36pt title stating the pain (not "The Problem"). Below, three equal-width data cards across the slide: each a giant number (40pt) + one-line qualifier (16pt) + source footnote (12pt gray).
+**視覚的成果。** 痛みを述べる 36pt のタイトル（「The Problem」ではなく）。その下に、スライド全体に等幅の 3 個のデータカード: それぞれ大きな数字（40pt）+ 1 行の修飾語（16pt）+ 出典脚注（12pt グレー）。
 
-Grid math for 3 cards, 1.5cm margins, 0.76cm gap: `usable = 33.87 − 3 − 2·0.76 = 29.35`, `col_width = 29.35 / 3 = 9.78cm`. x-positions: `1.5 / 12.04 / 22.58`.
+3 カード分のグリッド数学、余白 1.5cm、ギャップ 0.76cm: `usable = 33.87 − 3 − 2·0.76 = 29.35`、`col_width = 29.35 / 3 = 9.78cm`。x 位置: `1.5 / 12.04 / 22.58`。
 
 ```bash
 SLIDE=2  # second slide, after cover. Adjust from your build order.
@@ -333,14 +333,14 @@ cat <<EOF | officecli batch "$FILE"
   {"command":"add","parent":"/slide[$SLIDE]","type":"shape","props":{"text":"Source: 2025 DORA Report","x":"1.5cm","y":"13cm","width":"9.78cm","height":"1cm","font":"Calibri","size":"12","italic":"true","color":"666666","align":"center","fill":"none"}}
 ]
 EOF
-# Repeat the 4-block pattern at x=12.04cm and x=22.58cm for cards 2 and 3.
+# カード 2、3 を x=12.04cm、x=22.58cm で同じ 4 ブロックのパターンを繰り返す。
 ```
 
-**QA.** `officecli query "$FILE" 'shape:contains("Source")'` returns ≥ 3 (every claim carries a source). If zero sources, VCs will not trust a single number.
+**QA。** `officecli query "$FILE" 'shape:contains("Source")'` が 3 以上を返す（すべての主張に出典が伴う）。出典がゼロなら、VC は単一の数字を信用しない。
 
-### (2b) Why Now slide — Consumer / Seed / early A must-have
+### (2b) Why Now スライド — コンシューマー / シード / 早期 A の必須要素
 
-**Visual outcome.** 3 cards across: each = **trigger headline** (24pt bold) + **data point** (60pt number or date) + **one-line implication** (16pt) + **source footnote** (12pt gray). Reuse Problem grid math (`col=9.78cm`, x = `1.5 / 12.04 / 22.58`). §赛道 Consumer row 2 must-have; Seed / early A in any vertical benefits when "market window" IS the thesis.
+**視覚的成果。** 横並びの 3 カード: それぞれ = **トリガーの見出し**（24pt 太字）+ **データポイント**（60pt の数字または日付）+ **1 行の含意**（16pt）+ **出典脚注**（12pt グレー）。Problem のグリッド数学を再利用（`col=9.78cm`、x = `1.5 / 12.04 / 22.58`）。§業界別 コンシューマー行 2 の必須要素; あらゆる業界の Seed / 早期 A において「市場ウィンドウ」自体がテーゼである場合に有効。
 
 ```bash
 SLIDE=3
@@ -361,11 +361,11 @@ EOF
 # Card 2 pattern: Oura IPO 2024 / +$2.4B valuation / category proven. Card 3: On-device LLM (Llama 3.2) / Q4-24 / privacy moat viable.
 ```
 
-**QA.** 3 cards, each with a date/year citation in the source footnote, each card ≤ 30 words. `officecli query "$FILE" 'shape:contains("2024")'` + `'shape:contains("2025")'` ≥ 2 combined (timing anchors visible).
+**QA。** 3 カードそれぞれの出典脚注に年 / 日付の引用があり、各カードは 30 語以内。`officecli query "$FILE" 'shape:contains("2024")'` + `'shape:contains("2025")'` の合計が 2 以上（タイミングのアンカーが可視化されている）。
 
-### (3) Solution slide — product in one sentence + 3-step "how it works"
+### (3) Solution スライド — プロダクトを 1 文で + 3 ステップの「仕組み」
 
-**Visual outcome.** 36pt title naming the product pattern (not "Our Solution"). Below: 3 or 4 rounded boxes horizontally at y=7cm with elbow connectors + triangle arrowheads. Each box = one verb (observe / correlate / resolve). Reuse pptx Recipe (c) flowchart — orchestration, not a new primitive.
+**視覚的成果。** プロダクトのパターンを名指しする 36pt タイトル（「Our Solution」ではなく）。その下: y=7cm に横並びの角丸ボックス 3 – 4 個、エルボーコネクタ + 三角矢印付き。各ボックス = 1 つの動詞（observe / correlate / resolve）。pptx Recipe (c) のフローチャートを再利用する — 新しいプリミティブではなく、オーケストレーションである。
 
 ```bash
 # Title — "a product pattern, not a brand slogan".
@@ -382,13 +382,13 @@ officecli add "$FILE" "/slide[$SLIDE]" --type shape --prop name=SolTitle \
 # Full batch block → see pptx v2 §Creating and Editing (c) 4-step flowchart; swap N from 4 boxes to 3.
 ```
 
-**Product-pattern title rule.** The solution title is a verb + differentiated mechanism + metric. "Observe / Correlate / Resolve" is generic; VCs read it as any APM vendor. "Correlate K8s events across 3 data planes in 90 seconds" is specific; VCs read it as an insight.
+**プロダクトパターンのタイトルルール。** Solution のタイトルは、動詞 + 差別化されたメカニズム + 指標である。「Observe / Correlate / Resolve」は一般的すぎて、VC にはどこにでもある APM ベンダーに読める。「Correlate K8s events across 3 data planes in 90 seconds」は具体的で、VC には洞察として読まれる。
 
-**QA.** Count connectors: `officecli query "$FILE" 'connector' --json | jq '.data.results | length'` ≥ (step_count − 1). Every connector must have `tailEnd=triangle` — `view annotated` confirms arrowhead direction. Title must be ≤ 12 words (one breath).
+**QA。** コネクタ数をカウント: `officecli query "$FILE" 'connector' --json | jq '.data.results | length'` が (step_count − 1) 以上。すべてのコネクタは `tailEnd=triangle` を持たなければならない — `view annotated` で矢印の向きを確認できる。タイトルは 12 語以内（一息で読める長さ）。
 
-### (4) Market slide — TAM / SAM / SOM nested columns
+### (4) Market スライド — TAM / SAM / SOM のネストされたカラム
 
-**Visual outcome.** 36pt title "Market: $X.YB growing Z% CAGR". Below: three horizontal bars (or three stacked nested rectangles), labeled TAM / SAM / SOM with dollar values + growth rate. Bottom footnote cites **top-down vs bottom-up source** — pick one methodology per deck, don't mix.
+**視覚的成果。** 36pt タイトル「Market: $X.YB growing Z% CAGR」。その下: TAM / SAM / SOM のラベルとドル値 + 成長率を付した 3 本の横棒（または 3 段のネスト長方形）。下部の脚注には**トップダウンかボトムアップかの出典**を明記する — 1 デックにつき 1 つの手法を選び、混在させないこと。
 
 ```bash
 # Use a pptx column chart with 3 values. Categories = TAM,SAM,SOM. Source annotation is a separate shape.
@@ -407,11 +407,11 @@ officecli add "$FILE" "/slide[$SLIDE]" --type shape --prop text='Source: Gartner
   --prop font=Calibri --prop size=12 --prop italic=true --prop color=666666 --prop fill=none
 ```
 
-**QA.** Top-down vs bottom-up MUST be declared in the source footnote. A TAM without methodology reads as fabricated.
+**QA。** トップダウンかボトムアップかは出典脚注に必ず明記すること。手法のない TAM は捏造に見える。
 
-### (5) Product slide — screenshot + 3 bullets OR 3-card feature grid
+### (5) Product スライド — スクリーンショット + 3 つの箇条書き、または 3 カードのフィーチャーグリッド
 
-**Visual outcome.** Two layout options: (a) hero product screenshot on the left (60% of slide), 3 one-line feature bullets on the right (each ≥ 18pt body, no bullets under bullets). (b) 3 feature cards with one icon / screenshot thumbnail each. Pick (a) for consumer / app products, (b) for B2B / infrastructure.
+**視覚的成果。** 2 つのレイアウト選択肢: (a) 左側にヒーロープロダクトのスクリーンショット（スライドの 60%）、右側に 1 行のフィーチャー箇条書き 3 個（それぞれ本文 18pt 以上、箇条書きの中の箇条書きは不可）。(b) アイコン / スクリーンショットのサムネイルをそれぞれ 1 つ持つフィーチャーカード 3 枚。コンシューマー / アプリ系のプロダクトには (a) を、B2B / インフラ系には (b) を選ぶこと。
 
 ```bash
 # (a) screenshot + bullets — consumer pattern
@@ -425,17 +425,17 @@ officecli add "$FILE" "/slide[$SLIDE]" --type shape --prop text="Auto-correlate 
 # Repeat for bullets 2 and 3 at y=7.5cm / y=10cm.
 ```
 
-**QA.** Picture alt text present (`query 'picture:no-alt'` = empty). Bullets each ≥ 18pt. No "Lorem"/"product name here"/`{{...}}` tokens.
+**QA。** 画像の alt テキストが存在する（`query 'picture:no-alt'` が空）。箇条書きはそれぞれ 18pt 以上。「Lorem」/「product name here」/`{{...}}` のようなトークンがないこと。
 
-### (6) Business model slide — unit econ or revenue model
+### (6) Business model スライド — ユニットエコノミクスまたは収益モデル
 
-**Visual outcome.** Decision tree by vertical:
-- **SaaS / Enterprise (Series A+)** — 4 KPI callouts: CAC / LTV / Payback / GM (reuse pptx Recipe (e)).
-- **Consumer / D2C** — AOV · repeat-purchase rate · contribution margin · blended CAC.
-- **Marketplace** — GMV / take-rate / liquidity metric / cohort retention.
-- **Bio / Deep tech** — revenue model (license / milestone / royalty split) with assumed ranges.
+**視覚的成果。** 業界ごとの決定木:
+- **SaaS / エンタープライズ（Series A 以降）** — CAC / LTV / Payback / GM の 4 つの KPI コールアウト（pptx Recipe (e) を再利用）。
+- **コンシューマー / D2C** — AOV · リピート購入率 · 貢献利益 · ブレンド CAC。
+- **マーケットプレイス** — GMV / テイクレート / 流動性指標 / コホートリテンション。
+- **バイオ / ディープテック** — 想定レンジ付きの収益モデル（ライセンス / マイルストーン / ロイヤリティ分配）。
 
-Title names the dominant metric (e.g. "LTV:CAC 4.7x · 14-month payback · 78% gross margin"), not "Business Model". Full 4-card batch block → see pptx v2 §(e) KPI callouts.
+タイトルは支配的な指標を名指しする（例: 「LTV:CAC 4.7x · 14-month payback · 78% gross margin」）— 「Business Model」ではない。4 カード分のフルバッチブロック → pptx v2 §(e) KPI callouts を参照。
 
 ```bash
 # SaaS pattern: KPI card values + sub-label + gray VC-floor context under each.
@@ -447,11 +447,11 @@ Title names the dominant metric (e.g. "LTV:CAC 4.7x · 14-month payback · 78% g
 # → Full batch template → pptx v2 §(e). Adapt card count 3→4 and card width 9.78cm→7.15cm.
 ```
 
-**QA.** For Series B+, all four of {CAC, LTV, payback, GM} present: `officecli query "$FILE" 'shape:contains("CAC")'` ≥ 1 AND `shape:contains("LTV")'` ≥ 1 AND `shape:contains("payback")'` ≥ 1 AND `shape:contains("gross margin")'` ≥ 1.
+**QA。** Series B 以降の場合、{CAC, LTV, payback, GM} のすべてが存在すること: `officecli query "$FILE" 'shape:contains("CAC")'` ≥ 1 AND `shape:contains("LTV")'` ≥ 1 AND `shape:contains("payback")'` ≥ 1 AND `shape:contains("gross margin")'` ≥ 1。
 
-### (7) Traction slide — ARR curve that starts at 0
+### (7) Traction スライド — 0 起点の ARR カーブ
 
-**Visual outcome.** Line chart taking 60% of slide width; ARR on y-axis **starting at 0** (not at 80% of current value — the VC hockey-stick lie). Right-side commentary card: single giant number (current ARR) + growth rate + 2-3 milestones. If Series B+, second row: cohort retention snippet or logo wall.
+**視覚的成果。** スライド幅の 60% を占める折れ線グラフ; ARR は y 軸で **0 起点**（現在値の 80% から始める — VC のホッケースティックの嘘ではない）。右側のコメンタリーカード: 1 つの大きな数字（現在の ARR）+ 成長率 + 2 – 3 個のマイルストーン。Series B 以降なら 2 段目にコホートリテンションの抜粋またはロゴウォール。
 
 ```bash
 SLIDE=7
@@ -476,13 +476,13 @@ officecli add "$FILE" "/slide[$SLIDE]" --type shape --prop text="ARR · +312% Yo
   --prop font=Calibri --prop size=18 --prop color=CADCFC --prop align=center --prop fill=none
 ```
 
-**`--prop axismin=0` is load-bearing** — without it, pptx auto-scales the y-axis to start near the lowest value. That is the hockey-stick lie. Gate 6 greps this below.
+**`--prop axismin=0` は必須要件である** — これがないと、pptx は最低値付近から始まるよう y 軸を自動スケールしてしまう。それがホッケースティックの嘘である。Gate 6 が以下でこれを grep する。
 
-**QA.** ARR curve chart must carry `axismin=0`. `officecli get "$FILE" "/slide[$SLIDE]/chart[1]" --json | jq .format.axisMin` returns `0` (CLI emits camelCase `axisMin` in readback even though input prop is lowercase `axismin`).
+**QA。** ARR カーブのチャートは `axismin=0` を持たなければならない。`officecli get "$FILE" "/slide[$SLIDE]/chart[1]" --json | jq .format.axisMin` が `0` を返す（入力プロパティは小文字の `axismin` だが、CLI は読み戻し時にキャメルケースの `axisMin` を返す）。
 
-### (8) Team slide — avatars + names + prior companies (not just a wall)
+### (8) Team スライド — アバター + 名前 + 過去の所属企業（単なる壁ではなく）
 
-**Visual outcome.** 3- or 4-card row across the middle of the slide. Each card: picture (6×6cm) on top; name (20pt bold); role (16pt); **prior company + title** (16pt italic, 1 key line); optional LinkedIn URL footer (12pt). Team slide with just headshots and names reads as amateur.
+**視覚的成果。** スライド中央に 3 または 4 枚のカードが横並び。各カード: 上部に写真（6×6cm）; 名前（20pt 太字）; 役職（16pt）; **過去の所属企業 + 肩書き**（16pt イタリック、1 行の要点）; 任意で LinkedIn URL のフッター（12pt）。顔写真と名前だけのチームスライドは素人臭く見える。
 
 ```bash
 SLIDE=11
@@ -506,19 +506,19 @@ officecli add "$FILE" "/slide[$SLIDE]" --type shape --prop text="ex-Datadog Dire
 # Repeat for Card 2 (CTO, x=10cm) and Card 3 (VP Eng, x=18cm) — 3 cards × 5-6 shapes each.
 ```
 
-Prior companies carry **credibility density**. VCs read "ex-Datadog Director + led $40M → $200M" in 2 seconds; they read "co-founder, passionate" in 0 seconds (because they skip it). Advisors, if shown, go in a smaller row below with a single logo each.
+過去の所属企業は**信頼性の密度**を運ぶ。VC は「ex-Datadog Director + led $40M → $200M」を 2 秒で読み取るが、「co-founder, passionate」は 0 秒で読み飛ばす。アドバイザーを載せる場合は、下に小さめの行としてロゴ 1 個ずつで表示すること。
 
-**Arrangement helper.** 3 cards: `col=9.78cm, x=1.5/12.04/22.58`. 4 cards: `col=7.15cm, x=1.5/9.41/17.32/25.23`. 5 cards: `col=5.85cm, x=1.5/7.75/14.0/20.25/26.5` (0.4cm gap, tighter). 6+ or asymmetric → 2-row grid (3×2 / 3×3); see pptx v2 §(d) grid math.
+**配置ヘルパー。** 3 カード: `col=9.78cm, x=1.5/12.04/22.58`。4 カード: `col=7.15cm, x=1.5/9.41/17.32/25.23`。5 カード: `col=5.85cm, x=1.5/7.75/14.0/20.25/26.5`（ギャップ 0.4cm、より詰めた配置）。6 枚以上や非対称な場合は 2 段グリッド（3×2 / 3×3）にする; pptx v2 §(d) グリッド数学を参照。
 
-**QA.** `officecli query "$FILE" 'shape:contains("ex-")'` + `'shape:contains("prior")'` + `'shape:contains("former")'` ≥ 1 per team member. If zero, you have a portfolio, not a team.
+**QA。** `officecli query "$FILE" 'shape:contains("ex-")'` + `'shape:contains("prior")'` + `'shape:contains("former")'` がメンバー 1 人あたり 1 以上。ゼロなら、それはチームではなくポートフォリオである。
 
-### (9) Financials slide — 4-year plan + honest assumptions
+### (9) Financials スライド — 4 年計画 + 誠実な前提
 
-**Visual outcome.** Column chart: 4 years × (revenue, gross margin $, EBITDA). Right-side card: 3-bullet assumption panel (ARPU assumption, win-rate assumption, churn assumption). Title names the trajectory ("$18M → $85M by FY29"), not "Financial Projections".
+**視覚的成果。** カラムチャート: 4 年 × (revenue, gross margin $, EBITDA)。右側のカード: 3 項目の前提パネル（ARPU の前提、勝率の前提、チャーンの前提）。タイトルは軌跡を名指しする（「$18M → $85M by FY29」）— 「Financial Projections」ではない。
 
-Reuse pptx Recipe (b) chart + commentary. Pitch-specific: ASSUMPTIONS column on the right is **load-bearing** — a 4-year plan without visible assumptions reads as aspirational. VCs will ask what's behind every number anyway; surface it.
+pptx Recipe (b) のチャート + コメンタリーを再利用する。ピッチ特有の点: 右側の ASSUMPTIONS 列は**必須要件である** — 前提が見えない 4 年計画は願望に見える。VC はどのみちすべての数字の裏付けを尋ねてくる; あらかじめ提示しておくこと。
 
-Left 2/3 — slide + title + 3-series column chart:
+左 2/3 — スライド + タイトル + 3 系列のカラムチャート:
 
 ```bash
 SLIDE=17
@@ -535,7 +535,7 @@ officecli add "$FILE" "/slide[$SLIDE]" --type chart --prop chartType=column \
   --prop title='4-year plan — revenue, GM, EBITDA ($M)'
 ```
 
-Right 1/3 — assumptions commentary card:
+右 1/3 — 前提コメンタリーカード:
 
 ```bash
 officecli add "$FILE" "/slide[$SLIDE]" --type shape --prop geometry=roundRect --prop fill=F5F7FA --prop line=none \
@@ -547,13 +547,13 @@ officecli add "$FILE" "/slide[$SLIDE]" --type shape --prop text="Key Assumptions
 # Keep each bullet ≤ 14 words so 8.8cm width fits without wrap.
 ```
 
-**Assumptions panel is load-bearing.** A 4-year plan without visible assumptions reads as aspirational. VCs ask what's behind every number anyway — surface the three or four assumptions that drive the curve.
+**前提パネルは必須要件である。** 前提が見えない 4 年計画は願望に見える。VC はどのみちすべての数字の裏付けを尋ねてくる — カーブを牽引する 3 – 4 個の前提を明示すること。
 
-**QA.** `officecli query "$FILE" 'shape:contains("assumption")'` OR `'shape:contains("Assumes")'` ≥ 1. If zero, add the panel.
+**QA。** `officecli query "$FILE" 'shape:contains("assumption")'` OR `'shape:contains("Assumes")'` ≥ 1。ゼロならパネルを追加すること。
 
-### (10) The Ask — hero number + 4-bucket Use-of-Funds + runway
+### (10) The Ask — 主役数値 + 4 分割 Use-of-Funds + ランウェイ
 
-**Visual outcome.** Dark fill (match cover). Hero number in the center top: `$35M` at 96pt white. Below, a 4-bucket pie OR a 4-card row listing **Engineering 40% / GTM 35% / G&A 15% / Reserve 10%**. Bottom line: "18-month runway to $40M ARR" (next milestone, not "until next round").
+**視覚的成果。** ダーク塗り（カバーと合わせる）。中央上部に主役数値: `$35M` を 96pt の白字で。その下に、4 分割の円グラフ、または **Engineering 40% / GTM 35% / G&A 15% / Reserve 10%** を列挙する 4 カード行。最下行: 「18-month runway to $40M ARR」（次のマイルストーン、「次のラウンドまで」ではない）。
 
 ```bash
 SLIDE=20
@@ -572,15 +572,15 @@ officecli add "$FILE" "/slide[$SLIDE]" --type shape --prop text='18 months runwa
   --prop font=Calibri --prop size=22 --prop color=CADCFC --prop align=center --prop fill=none
 ```
 
-**4-bucket convention.** Engineering / GTM / G&A / Reserve is the canonical breakdown. Typical Series A ranges: Eng 40-50%, GTM 30-40%, G&A 10-15%, Reserve 5-10%. Series B shifts 5-10 points from Eng to GTM.
+**4 分割の規約。** Engineering / GTM / G&A / Reserve が正規の内訳である。典型的な Series A の割合レンジ: Eng 40-50%、GTM 30-40%、G&A 10-15%、Reserve 5-10%。Series B では Eng から GTM へ 5-10 ポイントシフトする。
 
-**QA.** `officecli query "$FILE" 'shape:contains("Use of Funds")'` ≥ 1. Pie chart present on ask slide. Runway + milestone on ask slide.
+**QA。** `officecli query "$FILE" 'shape:contains("Use of Funds")'` ≥ 1。ask スライドに円グラフが存在すること。ask スライドにランウェイ + マイルストーンが存在すること。
 
-### (11) Pipeline chart — Bio / Deep Tech must-have
+### (11) Pipeline チャート — バイオ / ディープテックの必須要素
 
-**Visual outcome.** Horizontal swimlane. Left column = candidate name; 4 stage columns to the right (Preclinical / Ph1 / Ph2 / Ph3 for bio — or TRL1-3 / TRL4-6 / TRL7-8 / TRL9 for deep tech). Each row's bar extends to its current stage; darker fill for later stages. NCT / trial-ID footer below. §赛道 row 5 Bio must-have; SaaS / Consumer skip.
+**視覚的成果。** 横型スイムレーン。左のカラム = 候補名; 右に 4 個のステージカラム（バイオなら Preclinical / Ph1 / Ph2 / Ph3、ディープテックなら TRL1-3 / TRL4-6 / TRL7-8 / TRL9）。各行のバーは現在のステージまで伸び、後段のステージほど濃い塗り。下部に NCT / 治験 ID のフッター。§業界別 行 5 バイオの必須要素; SaaS / コンシューマーは省略。
 
-Grid math: usable `= 30.87cm`, candidate col `= 7cm`, stage cols `= (30.87 − 7) / 4 = 5.97cm` each, row height `= 2.3cm`. Stage col x: `8.5 / 14.47 / 20.44 / 26.41`.
+グリッド数学: usable `= 30.87cm`、候補名カラム `= 7cm`、ステージカラム `= (30.87 − 7) / 4 = 5.97cm` ずつ、行の高さ `= 2.3cm`。ステージカラムの x: `8.5 / 14.47 / 20.44 / 26.41`。
 
 ```bash
 SLIDE=6
@@ -606,11 +606,11 @@ officecli add "$FILE" "/slide[$SLIDE]" --type shape --prop text='NCT05021323 (HL
   --prop font=Calibri --prop size=12 --prop italic=true --prop color=666666 --prop fill=none
 ```
 
-**QA.** `officecli query "$FILE" 'shape:contains("NCT")' --json | jq '.data.results | length'` ≥ 1. Bar colors darken across stages (`CADCFC` preclinical-only, `1E2761` Ph2-reached).
+**QA。** `officecli query "$FILE" 'shape:contains("NCT")' --json | jq '.data.results | length'` ≥ 1。ステージが進むほどバーの色が濃くなる（`CADCFC` = preclinical のみ、`1E2761` = Ph2 到達）。
 
-### (12) Competitive comparison table — Series B+ essential
+### (12) 競合比較表 — Series B 以降の必須要素
 
-**Visual outcome.** 5–7 rows × 4–6 cols. Column 1 = competitor name (optional logo shape beside); rest = differentiators (speed / price / integrations / margin / coverage). **Last row = your company, fill highlighted** in an accent color (CADCFC / 97BC62); competitor rows gray. Every Series B+ deck needs this (SaaS: Datadog / New Relic / Splunk; Bio: Kite / Novartis / BMS).
+**視覚的成果。** 5 – 7 行 × 4 – 6 列。列 1 = 競合名（任意でロゴシェイプを添える）; 残りは差別化要素（速度 / 価格 / インテグレーション数 / マージン / カバレッジ）。**最終行 = 自社、アクセントカラー（CADCFC / 97BC62）でハイライト**; 競合行はグレー。Series B 以降のすべてのデックにこれが必要（SaaS: Datadog / New Relic / Splunk; バイオ: Kite / Novartis / BMS）。
 
 ```bash
 SLIDE=13
@@ -626,53 +626,53 @@ officecli add "$FILE" "/slide[$SLIDE]" --type table \
 # Highlight your row: loop over /slide[$SLIDE]/table[1]/tr[5]/tc[1..5] and set cell fill to CADCFC.
 ```
 
-**QA.** `officecli query "$FILE" 'table' --json | jq '.data.results | length'` ≥ 1. Row count ≥ 4 (you + ≥ 3 named competitors). Your row visually distinct via cell fill (Gate 5b visual check — table style alone does not highlight one row).
+**QA。** `officecli query "$FILE" 'table' --json | jq '.data.results | length'` ≥ 1。行数 ≥ 4（自社 + 名指しの競合 3 社以上）。自社の行がセル塗りにより視覚的に区別されている（Gate 5b の視覚チェック — テーブルスタイルだけでは 1 行をハイライトできない）。
 
-## Numbers convention (pitch-specific)
+## 数値表記規約（ピッチ特有）
 
-A terse convention table — **not a finance tutorial**. If you don't already know what these mean, pause the deck and ask the user for the values; don't guess.
+簡潔な規約表 — **ファイナンスの教科書ではない**。これらの意味が分からない場合は、デックの作成を止めて数値をユーザーに確認すること; 推測しないこと。
 
-| Metric | Shape | Floor / convention |
+| 指標 | 形式 | Floor / 規約 |
 |---|---|---|
-| **TAM** | `$X.YB`, one methodology | Either top-down (analyst report) or bottom-up (count × ACV). Never both; never neither. |
-| **SAM** | `$X.YB`, fraction of TAM you serve | Typically 15 – 30% of TAM for verticalized SaaS; higher for horizontal |
-| **SOM** | `$X.YB` at year N | Realistic 5-yr share: 5 – 15% of SAM for early stage |
-| **ARR** | MRR × 12. NOT revenue. | SaaS only; contracts on books, net of churn |
-| **MRR** | Monthly recurring | ARR / 12; do not confuse with monthly revenue |
-| **NRR (Net Revenue Retention)** | %, trailing 12 mo | VC floor: > 100% acceptable, > 115% strong, > 130% exceptional |
-| **CAC** | $ fully-loaded | Sales + marketing spend / new logos acquired |
-| **LTV** | $ | ARPU × gross margin × (1 / churn rate) |
-| **LTV:CAC** | ratio | VC floor: 3x OK, > 4x strong, > 5x exceptional |
-| **CAC payback** | months | VC floor: < 18 mo OK, < 12 mo strong |
-| **Gross margin** | % | SaaS floor 70%, strong 80%+; marketplace 15-40%; hardware 30-50% |
-| **Burn / runway** | $/month + months | Gross burn vs net burn — label which; runway to specific milestone |
-| **Use of Funds** | 4-bucket pie | Engineering / Go-to-Market / G&A / Reserve — see Ask slide recipe |
+| **TAM** | `$X.YB`、手法は 1 つ | トップダウン（アナリストレポート）かボトムアップ（件数 × ACV）のどちらか。両方は不可; どちらもないのも不可。 |
+| **SAM** | `$X.YB`、TAM に占める割合 | 垂直特化型 SaaS では通常 TAM の 15 – 30%; 水平型ではより高い |
+| **SOM** | N 年目時点の `$X.YB` | 現実的な 5 年シェア: 早期段階では SAM の 5 – 15% |
+| **ARR** | MRR × 12。revenue ではない。 | SaaS のみ; 帳簿上の契約、チャーン控除後 |
+| **MRR** | 月次経常収益 | ARR / 12; 月次売上と混同しないこと |
+| **NRR (Net Revenue Retention)** | %、直近 12 か月 | VC floor: 100% 超で合格、115% 超で好調、130% 超で卓越 |
+| **CAC** | $、フルロード | セールス + マーケティング支出 / 新規獲得ロゴ数 |
+| **LTV** | $ | ARPU × 粗利率 × (1 / チャーン率) |
+| **LTV:CAC** | 比率 | VC floor: 3x で合格、4x 超で好調、5x 超で卓越 |
+| **CAC payback** | 月数 | VC floor: 18 か月未満で合格、12 か月未満で好調 |
+| **Gross margin** | % | SaaS floor 70%、好調は 80%以上; マーケットプレイスは 15-40%; ハードウェアは 30-50% |
+| **Burn / runway** | $/月 + 月数 | 総バーンか純バーンか — どちらか明記; 特定のマイルストーンまでのランウェイ |
+| **Use of Funds** | 4 分割円グラフ | Engineering / Go-to-Market / G&A / Reserve — Ask スライドレシピを参照 |
 
-**Rule.** Every number on a deck carries a unit. `18%` or `18M` alone is ambiguous — write `$18M ARR` / `18% NRR growth`. `TBD`, `coming soon`, `(fill in)`, `lorem`, `xxxx` in numeric slots = immediate VC disqualification. Gate 6 greps these below.
+**ルール。** デック上のすべての数字は単位を伴う。`18%` や `18M` 単独では曖昧である — `$18M ARR` / `18% NRR growth` のように書くこと。数値枠内の `TBD`、`coming soon`、`(fill in)`、`lorem`、`xxxx` は即座に VC から失格とされる。Gate 6 が以下でこれらを grep する。
 
-## VC ship-check (6 red flags / positive signals)
+## VC 出荷前チェック（6 つのレッドフラグ / ポジティブシグナル）
 
-What the VC reads in the first 30 seconds. Six one-line conditions — every "FAIL" below is an instant round-killer; fix before delivering.
+VC が最初の 30 秒で読み取るもの。6 つの一行条件 — 以下の「FAIL」はいずれも即座にラウンドを殺す — 納品前に修正すること。
 
-| # | Red flag (FAIL if present) | Positive signal (shipwise) |
+| # | レッドフラグ（該当すれば FAIL） | ポジティブシグナル（出荷可） |
 |---|---|---|
-| 1 | Cover without round + amount + date | `Company · tagline · Series X · $YM · Date` in 4 lines |
-| 2 | TAM > $100B without a cited source / methodology | TAM clearly labeled bottom-up OR top-down with a visible 2024+ source |
-| 3 | Traction chart y-axis does not start at 0 (hockey-stick lie) | Line chart `axismin=0`; growth shape honest |
-| 4 | Team slide: headshots + names only, no prior companies | Every member: prior company + role + 1 achievement metric |
-| 5 | Ask slide missing Use-of-Funds breakdown | `$XM` hero + 4-bucket pie (Eng / GTM / G&A / Reserve) + runway + next milestone |
-| 6 | `TBD` / `lorem` / `xxxx` / `{{...}}` / `(fill in)` anywhere | `view text` clean — zero placeholder tokens |
+| 1 | ラウンド + 金額 + 日付のないカバー | `Company · tagline · Series X · $YM · Date` を 4 行で |
+| 2 | 出典 / 手法の引用なしに TAM > $100B | TAM が明確にボトムアップまたはトップダウンとラベル付けされ、2024 年以降の出典が可視化されている |
+| 3 | トラクションチャートの y 軸が 0 起点でない（ホッケースティックの嘘） | 折れ線グラフが `axismin=0`; 成長曲線が誠実 |
+| 4 | チームスライドが顔写真 + 名前のみで過去の所属企業なし | 全メンバーについて: 過去の所属企業 + 役職 + 実績指標 1 件 |
+| 5 | Ask スライドに Use-of-Funds の内訳がない | `$XM` の主役数値 + 4 分割円グラフ（Eng / GTM / G&A / Reserve）+ ランウェイ + 次のマイルストーン |
+| 6 | どこかに `TBD` / `lorem` / `xxxx` / `{{...}}` / `(fill in)` がある | `view text` がクリーン — プレースホルダートークンがゼロ |
 
-**Common Series-specific failures.**
-- **Series A specific** — bottom-up TAM calculated from a fictional enterprise-count × ACV (no reference customers to anchor the count); `CAC / LTV` shown with < 12 months of data (statistically meaningless).
-- **Series B specific** — no unit-econ slide at all; CAC payback > 24 months without a "we're pre-scale, here's the plan" narrative; logo wall < 8 customers.
-- **Series C specific** — no moat / defensibility slide; revenue growth shown without margin trajectory; international expansion stated but no specific launch plan / hires.
+**ラウンド固有によくある失敗。**
+- **Series A 固有** — 架空の企業数 × ACV から算出したボトムアップ TAM（数を裏付ける参照顧客がない）; 12 か月未満のデータで `CAC / LTV` を提示（統計的に無意味）。
+- **Series B 固有** — ユニットエコノミクススライドが皆無; 「まだスケール前だが、これが計画だ」というナラティブを伴わずに CAC payback が 24 か月超; ロゴウォールの顧客数 8 未満。
+- **Series C 固有** — moat / 防御可能性のスライドがない; マージンの推移を伴わない売上成長; 国際展開を謳いながら具体的なローンチ計画 / 採用計画がない。
 
-The Delivery Gate 6 block below executes checks 1–6 above via grep + query. Gate 5b fresh-eyes covers the visual judgments (hockey stick, team credibility) that grep can't see.
+以下の Delivery Gate 6 ブロックが、上記チェック 1 – 6 を grep + query で実行する。Gate 5b の fresh-eyes は、grep では見えない視覚的判断（ホッケースティック、チームの信頼性）をカバーする。
 
-## Traction triple-pattern (ARR + milestones + logos)
+## トラクションの三重パターン（ARR + マイルストーン + ロゴ）
 
-For Series B+, traction often spans 2 slides: one for the chart + callout (recipe 7 above), one for **milestone timeline + logo wall**. Timeline = 4-6 horizontal dates with one-line events. Logo wall = 12-20 customer logos in a 4×N or 5×N grid, muted monochrome so no single brand dominates.
+Series B 以降では、トラクションはしばしば 2 枚のスライドにまたがる: 1 枚はチャート + コールアウト（上記レシピ 7）、もう 1 枚は**マイルストーンのタイムライン + ロゴウォール**。タイムライン = 4 – 6 個の日付を横一列に、それぞれ 1 行のイベント付きで。ロゴウォール = 4×N または 5×N グリッドに 12 – 20 個の顧客ロゴ、単一のブランドが目立たないよう落ち着いたモノクロで。
 
 ```bash
 # Milestone timeline: 5 dates as circles on a horizontal line at y=8cm.
@@ -685,25 +685,25 @@ For Series B+, traction often spans 2 slides: one for the chart + callout (recip
 # (use 5cm logo width centered in each 5.85cm column)
 ```
 
-**QA.** Logo wall should have ≥ 8 logos for Series B+, ≥ 4 for Series A. Fewer = "lighter than it looks"; more than 20 = pixel noise.
+**QA。** ロゴウォールは Series B 以降で 8 個以上、Series A で 4 個以上あるべき。それより少ないと「見かけより軽い」印象になり、20 を超えるとピクセルノイズになる。
 
-## QA — Delivery Gate (executable)
+## QA — Delivery Gate（実行可能）
 
-**Assume there are problems.** First render is almost never correct. Pitch decks fail at two layers: **structural** (schema, token leaks — caught by pptx v2 Gates 1–3) and **narrative** (wrong stage, missing unit econ, TAM unsourced — the checks that make pptx v2 Gate 5b + Gate 6 indispensable). Every check must print its success message.
+**問題は必ずあるものと想定すること。** 初回のレンダリングがそのまま正しいことはほぼない。ピッチデックは 2 つの層で失敗する: **構造的な失敗**（スキーマ、トークン漏れ — pptx v2 Gates 1–3 が捕捉する）と、**ナラティブの失敗**（ステージの誤り、ユニットエコノミクスの欠落、TAM に出典がない — これらは pptx v2 Gate 5b + Gate 6 を不可欠にするチェックである）。すべてのチェックは成功メッセージを出力しなければならない。
 
-### Gates 1–5a — inherited from pptx v2 verbatim
+### Gates 1–5a — pptx v2 からそのまま継承
 
-→ see pptx v2 §Delivery Gate L637-679. Copy-paste the full block:
+→ pptx v2 §Delivery Gate L637-679 を参照。ブロック全体をコピー&ペーストすること:
 
-- **Gate 1** — `validate` schema check (whitelist `ChartShapeProperties` warnings per C-P-2).
-- **Gate 2** — token leak via `view text` grep (`$xxx$`, `{{...}}`, `<TODO>`, `lorem`, `xxxx`, empty `()`/`[]`, `\$`/`\t`/`\n` literals).
-- **Gate 3** — hyperlink `rPr` schema trap (C-P-1) — zero `<a:rPr><a:hlinkClick>`.
-- **Gate 4** — slide-order sanity — cover first, dividers before sections, closing last.
-- **Gate 5a** — dark-on-dark contrast — every fill in `{1E2761, 0A1628, 8B1A1A, 2C5F2D, 36454F}` must declare near-white textColor. **This includes charts rendered on that fill**: chart `title.textColor`, `legend.textColor`, axis text default to dark and read as invisible on dark backgrounds — set them explicitly, or place the chart on a light card inside the dark slide.
+- **Gate 1** — `validate` によるスキーマチェック（C-P-2 に基づき `ChartShapeProperties` の警告をホワイトリスト化）。
+- **Gate 2** — `view text` の grep によるトークン漏れ検出（`$xxx$`、`{{...}}`、`<TODO>`、`lorem`、`xxxx`、空の `()`/`[]`、`\$`/`\t`/`\n` のリテラル）。
+- **Gate 3** — ハイパーリンク `rPr` のスキーマトラップ（C-P-1）— `<a:rPr><a:hlinkClick>` がゼロであること。
+- **Gate 4** — スライド順の健全性チェック — カバーが最初、区切りがセクションの前、closing が最後。
+- **Gate 5a** — ダーク背景上のダークテキストのコントラスト — `{1E2761, 0A1628, 8B1A1A, 2C5F2D, 36454F}` のいずれかの塗りには、ほぼ白のテキストカラーを明記しなければならない。**その塗りの上に描画されるチャートも含む**: チャートの `title.textColor`、`legend.textColor`、軸テキストは既定で暗色になり、ダーク背景上では見えなくなる — 明示的に設定するか、ダークスライド内の明色カードの上にチャートを配置すること。
 
-Do not skip or reorder these five. Every pptx-layer defect caught by Gates 1–5a also fires on pitch decks.
+これら 5 つは省略も順序変更もしないこと。Gates 1–5a が捕捉するすべての pptx レイヤーの欠陥は、ピッチデックでも発生する。
 
-**Gate 2b — pitch-specific shell-strip signatures (MANDATORY).** Gate 2 misses `$35M` that zsh silently stripped to empty (no residue to grep). Run this after Gate 2:
+**Gate 2b — ピッチ特有のシェル strip シグネチャ（必須）。** Gate 2 は zsh が黙って空文字に strip した `$35M` を見逃す（痕跡が残らないため）。Gate 2 の後にこれを実行すること:
 
 ```bash
 # $XXM stripped by zsh leaves bare " M ARR" / " M raised" / "Series [A-C] · M" patterns.
@@ -711,42 +711,42 @@ STRIP=$(officecli view "$FILE" text | grep -niE '(^|[^A-Za-z0-9])M (ARR|raised|S
 [ -z "$STRIP" ] && echo "Gate 2b OK (no \$-strip signatures)" || { echo "REJECT Gate 2b (likely zsh \$-strip — re-issue with single quotes):"; echo "$STRIP"; exit 1; }
 ```
 
-Fix: re-issue the offending `add`/`set` with single quotes around the text value (`--prop text='Series B · $35M'`, not double quotes). The same strip hits **chart series names / axis titles** (`--prop name="营收 ($M)"` → legend shows `营收 ()`): single-quote every chart prop carrying `$`.
+修正方法: 問題の `add`/`set` を、値をシングルクォートして再実行すること（`--prop text='Series B · $35M'`、ダブルクォートではなく）。同じ strip は**チャートのシリーズ名 / 軸タイトル**にも起こる（`--prop name="营收 ($M)"` → 凡例に `营收 ()` と表示される）: `$` を含むすべてのチャートプロパティをシングルクォートすること。
 
-### Gate 5b — Visual audit via HTML preview (MANDATORY, NOT optional)
+### Gate 5b — HTML プレビューによる視覚監査（必須、任意ではない）
 
-Gates 1–5a are token-grep defenses. **They cannot see a rendered slide.** This step is the only visual-assembly check. Do not skip.
+Gates 1–5a はトークン grep による防御である。**レンダリングされたスライドを見ることはできない。** このステップだけが唯一の視覚的な組み立てチェックである。省略しないこと。
 
-Run `officecli view "$FILE" html` and Read the returned HTML. Walk every slide and answer, for EACH (inherits pptx v2 Gate 5b checklist; pitch-specific additions marked ⭐):
+`officecli view "$FILE" html` を実行し、返された HTML を読むこと。すべてのスライドを一通り確認し、各項目について答えること（pptx v2 Gate 5b のチェックリストを継承; ピッチ特有の追加項目には ⭐ を付す）:
 
-- **overlap**: do any text shapes overlap each other or a chart?
-- **dark-on-dark**: is any text on a fill where fill brightness < 30% AND text brightness < 80%?
-- **divider overlap**: any giant decorative number (01/02/03 at 100pt+) colliding with the divider title text?
-- **order sanity**: does the slide sequence match your stage-appropriate narrative outline?
-- **missing arrowheads**: do flowchart/decision-tree connectors show direction, or plain lines?
-- ⭐ **traction y-axis**: does every ARR / revenue / growth line chart start at 0 on the y-axis? (Not 80% of current — that is the hockey-stick lie.)
-- ⭐ **team credibility**: does every team-slide card show a prior company or prior title? (Cards with just headshot + name = reject.)
-- ⭐ **TAM / market number credibility**: is the TAM under $100B for a niche market, or if ≥ $100B, is a methodology source cited? (A claimed `$500B TAM` with no source is an auto-reject red flag.)
-- ⭐ **Use-of-Funds pie**: does the ask slide carry a 4-bucket pie (Engineering / GTM / G&A / Reserve) or a 4-card row with %s?
-- ⭐ **narrative completeness**: is the order cover → problem → solution → market → product → model → traction → team → financials → ask, or your stage-appropriate permutation from §Stage diagnosis?
+- **重なり**: テキストシェイプ同士、またはチャートと重なっていないか？
+- **暗色上の暗色**: 塗りの明度 < 30% かつテキストの明度 < 80% のテキストがないか？
+- **ディバイダーの重なり**: 巨大な装飾数字（01/02/03 の 100pt 以上）がディバイダーのタイトルテキストと衝突していないか？
+- **順序の健全性**: スライドの並びは、あなたのステージに適したナラティブのアウトラインと一致しているか？
+- **矢印の欠落**: フローチャート / 決定木のコネクタは方向を示しているか、それとも単なる線か？
+- ⭐ **トラクションの y 軸**: すべての ARR / revenue / growth の折れ線グラフの y 軸は 0 起点になっているか？（現在値の 80% ではない — それはホッケースティックの嘘である。）
+- ⭐ **チームの信頼性**: すべてのチームスライドのカードが過去の所属企業または過去の肩書きを示しているか？（顔写真 + 名前だけのカードは reject。）
+- ⭐ **TAM / 市場数値の信頼性**: TAM はニッチ市場に対して $100B 未満か、あるいは $100B 以上の場合、手法の出典が引用されているか？（出典のない `$500B TAM` の主張は自動的な reject のレッドフラグである。）
+- ⭐ **Use-of-Funds の円グラフ**: ask スライドに 4 分割円グラフ（Engineering / GTM / G&A / Reserve）、または %付きの 4 カード行があるか？
+- ⭐ **ナラティブの完全性**: 順序が cover → problem → solution → market → product → model → traction → team → financials → ask、またはあなたのステージに適した §Stage diagnosis からの順列になっているか？
 
-**Instruction.** Run `officecli view "$FILE" html` and Read the HTML. Walk every slide against the questions below. If rendering chart colors, animations, or zoom — those only show in the target viewer (PowerPoint / Keynote / WPS); ask the user to open `.pptx` directly for those runtime features.
+**指示。** `officecli view "$FILE" html` を実行し、HTML を読むこと。すべてのスライドを以下の質問に沿って確認すること。チャートの色、アニメーション、ズームをレンダリングする場合 — それらは対象ビューア（PowerPoint / Keynote / WPS）でのみ表示されるため、これらのランタイム機能についてはユーザーに `.pptx` を直接開くよう依頼すること。
 
-> For every slide:
-> (a) Are slides in VC narrative order (cover → problem → solution → market → product → model → traction → team → financials → ask, with your stage's adjustments)? Flag any out-of-sequence.
-> (b) Is every ARR / revenue / growth line chart y-axis anchored at 0? Flag hockey-stick visual lies.
-> (c) Does the team slide carry prior-company credentials for each person? (Not just headshot + name.)
-> (d) Does every TAM / SAM / SOM claim have a visible source or methodology?
-> (e) Does the ask slide have a 4-bucket Use of Funds (Engineering / GTM / G&A / Reserve) and a specific next milestone + runway length?
-> (f) Any text overlap, dark-on-dark, off-slide geometry, missing arrowheads, placeholder tokens (`TBD` / `lorem` / `{{...}}` / `xxxx` / empty `()`)?
+> すべてのスライドについて:
+> (a) スライドは VC のナラティブ順序（cover → problem → solution → market → product → model → traction → team → financials → ask、あなたのステージに応じた調整を含む）になっているか？順序違反があれば指摘すること。
+> (b) すべての ARR / revenue / growth の折れ線グラフの y 軸は 0 起点になっているか？ホッケースティックの視覚的な嘘を指摘すること。
+> (c) チームスライドは各メンバーについて過去の所属企業の実績を示しているか？（顔写真 + 名前だけではなく。）
+> (d) すべての TAM / SAM / SOM の主張に、可視化された出典や手法があるか？
+> (e) ask スライドには 4 分割の Use of Funds（Engineering / GTM / G&A / Reserve）と、具体的な次のマイルストーン + ランウェイ期間があるか？
+> (f) テキストの重なり、暗色上の暗色、スライド外へのはみ出し、矢印の欠落、プレースホルダートークン（`TBD` / `lorem` / `{{...}}` / `xxxx` / 空の `()`）はないか？
 
-Report every instance with slide number. If ANY defect — REJECT; do not deliver until fixed.
+欠陥があれば、それぞれをスライド番号とともに報告すること。1 つでも欠陥があれば — REJECT; 修正するまで納品しないこと。
 
-**Human preview (optional).** If you want the user to visually preview the deck, run `officecli watch "$FILE"` for a live preview the user can open at their own discretion, or have them open the `.pptx` directly in PowerPoint / WPS / Keynote. For final visual verification, open the file in the target presentation viewer.
+**人間によるプレビュー（任意）。** ユーザーにデックを視覚的にプレビューしてもらいたい場合は、`officecli watch "$FILE"` を実行してライブプレビューを提供し、ユーザー自身の判断で開いてもらうか、`.pptx` を PowerPoint / WPS / Keynote で直接開いてもらうこと。最終的な視覚確認には、対象のプレゼンテーションビューアでファイルを開くこと。
 
-### Gate 6 — Pitch narrative sanity (executable)
+### Gate 6 — ピッチナラティブの健全性チェック（実行可能）
 
-Pitch-specific checks that grep the deck for VC red flags. Every one is a token check — combine with Gate 5b's human read for full coverage.
+VC のレッドフラグをデックから grep するピッチ特有のチェック。いずれもトークンチェックであり、フルカバレッジのために Gate 5b の人間による確認と組み合わせること。
 
 ```bash
 FILE="deck.pptx"
@@ -783,28 +783,29 @@ AXISMIN_HIT=$(officecli query "$FILE" 'chart' --json | jq '[.data.results[]? | s
 echo "Delivery Gate 6 PASS (token + narrative checks) — proceed to Gate 5b fresh-eyes (MANDATORY)"
 ```
 
-**Readback key note.** CLI accepts lowercase `axismin` as input (on `--prop axismin=0`) but emits camelCase `axisMin` in `query --json` readback. The jq above accepts both for forward-compat.
+**読み戻しに関する注意。** CLI は入力（`--prop axismin=0`）として小文字の `axismin` を受け付けるが、`query --json` の読み戻しではキャメルケースの `axisMin` を返す。上記の jq は将来互換性のため両方を受け付ける。
 
-Gate 6 is a grep floor. Gate 5b is the visual ceiling. Ship only when both print PASS.
+Gate 6 は grep の floor である。Gate 5b は視覚の ceiling である。両方が PASS を出力したときのみ出荷すること。
 
-### Honest limit
+### 正直な限界
 
-`validate` catches schema errors, not fundraising errors. A deck passes `validate` with a `$500B TAM` on a $10M market, a team slide of four co-founders with no prior companies, a hockey stick y-axis at 80%, a pitch for a Series B round without unit econ, and an ask slide saying "we're raising some money". Gates 5b + 6 above exist because `validate` cannot catch any of this.
+`validate` はスキーマエラーを捕捉するが、資金調達上の誤りは捕捉しない。デックは、$10M 市場に対する `$500B TAM`、過去の所属企業のない 4 人の共同創業者のチームスライド、80% 起点のホッケースティック y 軸、ユニットエコノミクスを欠く Series B ラウンドのピッチ、「多少の資金を調達しています」という ask スライドを抱えたまま `validate` を通過し得る。上記の Gates 5b + 6 は、`validate` がこれらのいずれも捕捉できないために存在する。
 
-## Known Issues & Pitfalls
+## 既知の問題と落とし穴
 
-→ Base pitfalls (shell escape, `[last()]` in resident, connector `@name=` rejection C-P-6, picture alt two-step C-P-7, animation remove C-P-4, chart color normalization C-P-7): see pptx v2 §Known Issues & Pitfalls C-P-1..7.
+→ ベースの落とし穴（シェルエスケープ、resident における `[last()]`、コネクタ `@name=` の拒否 C-P-6、画像 alt の 2 段階手順 C-P-7、アニメーション削除 C-P-4、チャート色の正規化 C-P-7）: pptx v2 §Known Issues & Pitfalls C-P-1..7 を参照。
 
-Pitch-specific:
+ピッチ特有:
 
-- **Stage misidentified.** Series A deck with 6 pages of CAC/LTV math = over-packaged. Series B deck missing unit econ = incomplete. If unsure, re-read §Stage diagnosis before building.
-- **Hockey-stick y-axis.** If the line chart's y-axis doesn't start at 0, VCs read it as a visual lie within 2 seconds. Always `--prop axismin=0` on ARR / revenue / growth charts. Gate 6.6 checks this.
-- **Team slide = portfolio.** Cards showing only {headshot + name + role} fail VC credibility. Every card needs a prior-company or prior-achievement line. Gate 6.5 checks this.
-- **TAM without methodology.** A claimed number with no "top-down" or "bottom-up" source footnote = fabricated. Pick one methodology per deck; don't mix.
-- **Use-of-Funds as 3-bucket or 5-bucket.** 4-bucket (Eng / GTM / G&A / Reserve) is convention; departing from it reads as sloppy. Gate 6.4 checks presence.
-- **Pitch deck used for a board review / sales deck.** Narrative arc (problem → ask) makes board reviews awkward — route to pptx v2 Recipe (d) 10-slide instead. See §Reverse handoff above.
-- **pptx v2 Recipe (d′) 20-slide is a starting point, not a formula.** It is stage-agnostic SaaS. Adjust for your stage + 赛道 via §Stage diagnosis and §赛道 arc templates — never ship (d′) unchanged for a non-SaaS Series A.
+- **ステージの誤認。** CAC/LTV の数式が 6 ページも続く Series A デックは過剰包装。ユニットエコノミクスを欠く Series B デックは未完成。不明な場合は、構築前に §Stage diagnosis を読み直すこと。
+- **ホッケースティックの y 軸。** 折れ線グラフの y 軸が 0 起点でない場合、VC は 2 秒以内にそれを視覚的な嘘として読み取る。ARR / revenue / growth のチャートには常に `--prop axismin=0` を付けること。Gate 6.6 がこれをチェックする。
+- **チームスライド = ポートフォリオ。** {顔写真 + 名前 + 役職} だけを示すカードは VC の信頼性審査に落ちる。すべてのカードに、過去の所属企業または過去の実績の 1 行が必要。Gate 6.5 がこれをチェックする。
+- **手法のない TAM。** 「トップダウン」や「ボトムアップ」の出典脚注がない主張は捏造とみなされる。1 デックにつき 1 つの手法を選び、混在させないこと。
+- **Use-of-Funds が 3 分割や 5 分割になっている。** 4 分割（Eng / GTM / G&A / Reserve）が規約であり、それから外れると雑に見える。Gate 6.4 が存在をチェックする。
+- **ピッチデックを取締役会レビュー / セールスデックに流用する。** ナラティブアーク（problem → ask）は取締役会レビューにはそぐわない — 代わりに pptx v2 Recipe (d) の 10 枚構成へルーティングすること。上記の §Reverse handoff を参照。
+- **pptx v2 Recipe (d′) の 20 枚構成は出発点であり、公式ではない。** これはステージ非依存の SaaS 向けである。あなたのステージ + 業界に応じて §Stage diagnosis と §業界別アーク・テンプレート で調整すること — 非 SaaS の Series A に対して (d′) を無調整のまま出荷しないこと。
 
-## Help pointer
+## ヘルプの参照先
 
-When in doubt: `officecli help pptx`, `officecli help pptx <element>`, `officecli help pptx <element> --json`. Help is the authoritative schema; this skill is the decision guide for fundraising deltas on top of pptx v2.
+迷ったら: `officecli help pptx`、`officecli help pptx <element>`、`officecli help pptx <element> --json`。ヘルプが権威あるスキーマであり、このスキルは pptx v2 の上に乗る資金調達の差分に関する判断ガイドである。
+</content>

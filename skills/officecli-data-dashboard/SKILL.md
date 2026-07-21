@@ -1,24 +1,24 @@
 ---
 name: officecli-data-dashboard
-description: "Use this skill to build a multi-element Excel dashboard — Dashboard sheet on open, multiple formula-driven KPI cards, multiple charts, sparklines, and conditional formatting — from CSV or tabular input. Trigger on: 'dashboard', 'KPI dashboard', 'analytics dashboard', 'executive dashboard', 'metrics dashboard', 'CSV to dashboard', 'data visualization'. Output is a single .xlsx. Scene-layer on officecli-xlsx: inherits every xlsx hard rule. DO NOT invoke for: a single budget tracker / one-sheet CSV-with-formatting (use xlsx), a 3-statement / DCF / LBO financial model (use financial-model), a weekly report with ≤ 1 chart and < 10 rows (use xlsx)."
+description: "CSV や表形式データから、複数要素で構成される Excel ダッシュボード — 開いた時に表示される Dashboard シート、数式駆動の複数 KPI カード、複数のチャート、スパークライン、条件付き書式 — を構築する際にこのスキルを使用する。トリガーワード: 'dashboard'、'KPI dashboard'、'analytics dashboard'、'executive dashboard'、'metrics dashboard'、'CSV to dashboard'、'data visualization'。出力は単一の .xlsx。officecli-xlsx 上のシーンレイヤー: xlsx のハードルールをすべて継承する。次の場合は呼び出さないこと: 単一の予算トラッカー／1シートの CSV に書式を付けただけのもの（xlsx を使用）、3ステートメント／DCF／LBO 財務モデル（financial-model を使用）、チャートが1つ以下・行数10未満の週次レポート（xlsx を使用）。"
 ---
 
-# Data Dashboard (scene-layer on officecli-xlsx)
+# Data Dashboard（officecli-xlsx 上のシーンレイヤー）
 
-A dashboard is not "a spreadsheet with charts". It is a composition: **one Dashboard sheet the user lands on** with formula-driven KPI cards, cell-range-linked charts, sparklines, and semantic conditional formatting. Everything else (raw data, aggregations) is upstream infrastructure the user should never need to open. This skill teaches the composition pattern. Everything about the xlsx engine — cells, formulas, batch JSON, shell quoting, validate, HTML preview — comes from `officecli-xlsx` and is not re-taught here.
+ダッシュボードとは「チャート付きのスプレッドシート」ではない。それは一つの構成物 — **ユーザーが最初にたどり着く単一の Dashboard シート**に、数式駆動の KPI カード、セル範囲にリンクしたチャート、スパークライン、意味づけされた条件付き書式が揃っているものだ。それ以外（生データ、集計処理）はすべて、ユーザーが決して開く必要のない上流のインフラである。このスキルはその構成パターンを教える。xlsx エンジンに関するすべて — セル、数式、バッチ JSON、シェルのクォーティング、validate、HTML プレビュー — は `officecli-xlsx` に由来し、ここでは再説明しない。
 
-## Setup
+## セットアップ
 
-If `officecli` is missing:
+`officecli` が未導入の場合:
 
 - **macOS / Linux**: `curl -fsSL https://d.officecli.ai/install.sh | bash`
 - **Windows (PowerShell)**: `irm https://d.officecli.ai/install.ps1 | iex`
 
-Verify with `officecli --version` (open a new terminal if PATH hasn't picked up). If install fails, download a binary from https://github.com/iOfficeAI/OfficeCLI/releases.
+`officecli --version` で確認する（PATH がまだ反映されていない場合は新しいターミナルを開く）。インストールに失敗した場合は https://github.com/iOfficeAI/OfficeCLI/releases からバイナリをダウンロードする。
 
-## ⚠️ Help-First Rule
+## ⚠️ Help-First ルール
 
-**When a prop name, enum value, or alias is uncertain, consult help before guessing.**
+**プロパティ名、enum 値、エイリアスが不確かな場合は、推測する前に help を確認すること。**
 
 ```bash
 officecli help xlsx                          # element list
@@ -27,63 +27,63 @@ officecli help xlsx sparkline                # sparklines
 officecli help xlsx conditionalformatting    # all CF rule types
 ```
 
-Help reflects the installed CLI version. When this skill and help disagree, **help wins**. DeferredAddKeys (`combosplit`, `holesize`) work on `add` only — see Reference.
+help はインストール済みの CLI バージョンを反映する。本スキルと help の内容が食い違う場合は **help を優先する**。DeferredAddKeys（`combosplit`、`holesize`）は `add` 時のみ有効 — 詳細は Reference を参照。
 
-## Mental Model & Inheritance
+## メンタルモデルと継承
 
-This skill **inherits every xlsx hard rule** from `officecli-xlsx` — shell quoting, zero formula errors, visual delivery floor, batch JSON shape (`{"command":"set"|"add","path":...,"props":{...}}` — key is `command`, NOT `action`), batch JSON dotted-name rule, chart data-feed forms, batch+resident limits, `validate` discipline. Read officecli-xlsx first; honour those rules, do not re-teach them here.
+このスキルは `officecli-xlsx` から**すべての xlsx ハードルールを継承する** — シェルのクォーティング、数式エラーゼロ、視覚的な納品下限、バッチ JSON の形（`{"command":"set"|"add","path":...,"props":{...}}` — キーは `command` であり、`action` ではない）、バッチ JSON のドット付き名前ルール、チャートのデータフィード形式、バッチ／レジデントの制限、`validate` の徹底。まず officecli-xlsx を読み、それらのルールに従うこと。ここでは再説明しない。
 
-**Reverse handoff — do NOT use this skill when:**
+**逆ハンドオフ — 次の場合はこのスキルを使わないこと:**
 
-- The ask is a **single-sheet CSV-with-formatting tracker** (no Dashboard sheet, no KPI cards, ≤ 1 chart) → go back to `officecli-xlsx`.
-- The ask is a **3-statement / DCF / LBO financial model** with blue-inputs / black-formulas / cross-sheet drivers → use `officecli-financial-model`.
-- The ask is a **weekly status report** with one SUMIF summary and one chart over < 10 rows → `officecli-xlsx`.
+- 依頼が **単一シートの CSV に書式を付けたトラッカー**（Dashboard シートなし、KPI カードなし、チャート1つ以下）である → `officecli-xlsx` に戻る。
+- 依頼が青字入力／黒字数式／シート横断ドライバーを伴う **3ステートメント／DCF／LBO 財務モデル**である → `officecli-financial-model` を使用する。
+- 依頼が SUMIF 集計1つとチャート1つ、行数10未満の**週次ステータスレポート**である → `officecli-xlsx`。
 
-This skill only accepts: "a Dashboard sheet the user opens first, multiple KPI cards, multiple charts, some CF / sparklines".
+このスキルが受け付けるのは「ユーザーが最初に開く Dashboard シート、複数の KPI カード、複数のチャート、いくつかの CF／スパークライン」のみである。
 
-## Shell & Execution Discipline
+## シェルと実行の規律
 
-→ see officecli-xlsx §Shell & Execution Discipline for the baseline (quoting, heredoc for `!`, incremental execution).
+→ ベースライン（クォーティング、`!` のための heredoc、段階的な実行）は officecli-xlsx の §Shell & Execution Discipline を参照。
 
-Two increments specific to dashboards:
+ダッシュボード特有の増分は2つ:
 
-- **Long chart `add` commands exceed 180 chars.** Always split across lines with trailing `\`; never pack a chart command onto a single line. The longer the command, the higher the chance a shell-escape bug hides inside it.
-- **Multi-instance counts use `query --json | jq length`, never `raw-get | grep -c`.** Example: `officecli query "$FILE" chart --json | jq '.data.results | length'` for "how many charts do I have?".
+- **長いチャートの `add` コマンドは180文字を超える。** 常に末尾に `\` を付けて複数行に分割すること。チャートコマンドを1行に詰め込んではならない。コマンドが長くなるほど、シェルエスケープのバグが潜む可能性は高くなる。
+- **複数インスタンスの件数取得には `query --json | jq length` を使い、`raw-get | grep -c` は使わない。** 例: 「チャートはいくつあるか？」に対しては `officecli query "$FILE" chart --json | jq '.data.results | length'`。
 
-## Core Principles
+## Core Principles（中核原則）
 
-Five non-negotiable principles. If any one is violated the output is not a dashboard, it is a spreadsheet that happens to have a chart.
+5つの譲れない原則。どれか一つでも破られていれば、それはダッシュボードではなく「たまたまチャートが付いているスプレッドシート」である。
 
-1. **Formula-driven KPIs.** Every KPI value on the Dashboard sheet is a formula — `SUM`, `AVERAGE`, `IFERROR((...-...)/...,0)`, whatever — referring to cells on the Data / Summary sheet. Never hardcode a computed number. When the underlying data changes tomorrow, KPIs update on open.
+1. **数式駆動の KPI。** Dashboard シート上のすべての KPI 値は数式である — `SUM`、`AVERAGE`、`IFERROR((...-...)/...,0)` など、いずれも Data／Summary シート上のセルを参照する。計算済みの数値をハードコードしてはならない。翌日に元データが変わっても、KPI は開いた時点で更新される。
 
-2. **Cell-range references for charts.** Every chart series reads from a cell range: `series1.values="Sheet1!B2:B13"`. Inline `data="Revenue:100,200,300"` is for a 5-minute demo, not a delivered dashboard. The one exception: data requires an aggregation Excel cannot express (rare) — document the exception in a comment cell.
+2. **チャートはセル範囲を参照する。** すべてのチャートシリーズはセル範囲から読み取る: `series1.values="Sheet1!B2:B13"`。インラインの `data="Revenue:100,200,300"` は5分デモ用であり、納品するダッシュボードには使わない。唯一の例外は、Excel が表現できない集計をデータが必要とする場合（稀）— その場合はコメントセルに例外を明記する。
 
-3. **Dashboard-first architecture.** KPI label cells, KPI value cells, charts, sparklines all live on the **Dashboard** sheet — the single sheet a user lands on. Raw imports and `SUMIFS` rollups live on Data / Summary sheets, upstream of the Dashboard. The user should never need to switch tabs to find the answer.
+3. **Dashboard ファーストのアーキテクチャ。** KPI ラベルセル、KPI 値セル、チャート、スパークラインはすべて、ユーザーが最初にたどり着く**単一の Dashboard シート**上に置く。生データのインポートや `SUMIFS` の集計は、Dashboard より上流の Data／Summary シートに置く。ユーザーが答えを探すためにタブを切り替える必要は決してあってはならない。
 
-4. **Visible cells only for chart sources.** LibreOffice does not evaluate formulas in hidden columns or hidden sheets at render time. A chart whose `series1.values` points at a hidden-column `SUMIFS` renders blank. Pattern: aggregate into a **visible** Summary sheet, point charts at Summary cells, hide only helper columns that are not chart sources.
+4. **チャートのデータ元は可視セルのみ。** LibreOffice はレンダリング時に、非表示の列や非表示シート内の数式を評価しない。`series1.values` が非表示列の `SUMIFS` を指しているチャートは空白でレンダリングされる。パターン: **可視の** Summary シートに集計し、チャートは Summary のセルを参照し、チャートのデータ元ではないヘルパー列だけを非表示にする。
 
-5. **Data-size-aware complexity.** A 10-row dataset does not get 5 KPIs and 4 charts. A 200-row dataset does not get 1 KPI and 1 chart. Scale up the composition with the input (table in §Design Ideas). Overbuilding is as wrong as underbuilding.
+5. **データ規模に応じた複雑度。** 10行のデータセットに KPI 5個・チャート4個は不釣り合いだ。200行のデータセットに KPI 1個・チャート1個も不釣り合いだ。入力データに合わせて構成をスケールさせる（§Design Ideas の表を参照）。過剰構築は過小構築と同じくらい誤りである。
 
-## Requirements
+## Requirements（要件）
 
-All `officecli-xlsx` requirements apply (→ see officecli-xlsx §Requirements for Outputs). Dashboards add these:
+`officecli-xlsx` の要件はすべて適用される（→ officecli-xlsx の §Requirements for Outputs を参照）。ダッシュボードでは以下を追加する:
 
-- **Dashboard sheet is the active tab on open.** Confirm 0-based sheet index with `officecli query "$FILE" sheet` BEFORE filling `activeTab="N"`. Never guess the index.
-- **`calc.fullCalcOnLoad=true`.** Set via `officecli set "$FILE" / --prop calc.fullCalcOnLoad=true`. Do NOT `raw-set` `<calcPr>` — it produces duplicate elements that fail validate.
-- **Refresh downstream cachedValue after every upstream edit.** `fullCalcOnLoad=true` schedules runtime recalc only; it does NOT refresh build-time `cachedValue`. After `set B=100 → set E==B+D → fix B=150`, E is stale until you re-issue E's formula (or close/reopen). Stale cache ships "Net Change = 0" to the board.
-- **Every chart has a descriptive title and every series has a name.** `"Series1"` in a legend is unfinished work.
-- **Every KPI value cell has a formula.** Verifiable: `officecli query "$FILE" 'Dashboard!:has(formula)' --json | jq '.data.results | length'` should equal your planned KPI count.
-- **Header row fill on every data sheet.** Data sheet, Summary sheet, and any secondary data sheet need row 1 filled (e.g., `fill=1F3864 + font.color=FFFFFF + font.bold=true`).
-- **10+ rows on Data sheet → ≥ 1 CF rule on a numeric column.** A 20-row table with zero visual scanning aid is a quality miss.
-- **Dashboard value columns sized to the widest expected cachedValue — not a fixed 22.** Rule of thumb at 24pt bold + currency numFmt: `width ≈ ceil((visible_chars + 2) × 1.3)`. A KPI holding `¥1,958,414,250` (14 visible chars with currency + commas) needs `width ≥ 28`; a 4-digit KPI still needs `width ≥ 22` as the floor. Hardcoding `22` for a 10+ digit KPI is how `###` ships to the user.
-- **Sparkline row height ≥ 20.** A sparkline in a default 15pt row is a flat squiggle — set `/Dashboard/row[N] height=22` (or 24 when paired with a 24pt KPI value cell in the same row).
-- **Print deliverables set `_xlnm.Print_Area` scoped to Dashboard** + hide non-Dashboard sheets + add `<pageSetup fitToPage/>`. Without all three, the print pipeline emits every sheet and Dashboard lands on page 2+. See §Print-ready delivery for the exact commands.
+- **Dashboard シートが開いた時のアクティブタブであること。** `activeTab="N"` を設定する**前に** `officecli query "$FILE" sheet` で 0 始まりのシートインデックスを確認すること。インデックスを推測してはならない。
+- **`calc.fullCalcOnLoad=true` を設定する。** `officecli set "$FILE" / --prop calc.fullCalcOnLoad=true` で設定する。`<calcPr>` を `raw-set` してはならない — 要素が重複し validate に失敗する。
+- **上流を編集するたびに下流の cachedValue を再計算すること。** `fullCalcOnLoad=true` は実行時の再計算のみをスケジュールし、ビルド時の `cachedValue` は更新しない。`set B=100 → set E==B+D → fix B=150` の後、E の数式を再発行する（あるいは close/reopen する）まで E は古いままだ。キャッシュが古いままだと「Net Change = 0」がボードに届いてしまう。
+- **すべてのチャートに説明的なタイトルを、すべてのシリーズに名前を付けること。** 凡例に "Series1" が残っているのは未完成の仕事だ。
+- **すべての KPI 値セルに数式があること。** 検証方法: `officecli query "$FILE" 'Dashboard!:has(formula)' --json | jq '.data.results | length'` が計画した KPI 件数と一致すること。
+- **すべてのデータシートでヘッダー行を塗りつぶすこと。** Data シート、Summary シート、その他の副次データシートは、1行目を塗りつぶす必要がある（例: `fill=1F3864 + font.color=FFFFFF + font.bold=true`）。
+- **10行以上の Data シートには CF ルールを1つ以上つけること。** 20行の表に視覚的なスキャン補助が一つもないのは品質上の欠陥である。
+- **Dashboard の値列は、想定される cachedValue の最大幅に合わせてサイズを決める — 固定 22 ではない。** 目安（24pt bold ＋ 通貨 numFmt の場合）: `width ≈ ceil((visible_chars + 2) × 1.3)`。`¥1,958,414,250`（通貨記号とカンマ込みで可視文字数14）を保持する KPI には `width ≥ 28` が必要。4桁の KPI であっても最低 `width ≥ 22` は必要。10桁以上の KPI に `22` をハードコードすると `###` がユーザーに届く。
+- **スパークラインの行高は20以上であること。** デフォルトの15pt行に置かれたスパークラインは平坦なギザギザにしか見えない — `/Dashboard/row[N] height=22` を設定する（同じ行に24ptの KPI 値セルが並ぶ場合は24）。
+- **印刷用の納品物は `_xlnm.Print_Area` を Dashboard に限定し**、Dashboard 以外のシートを非表示にし、`<pageSetup fitToPage/>` を追加すること。この3つすべてがないと、印刷パイプラインは全シートを出力し、Dashboard は2ページ目以降に配置されてしまう。正確なコマンドは §Print-ready delivery を参照。
 
-## Quick Start
+## クイックスタート
 
-Minimal viable dashboard: 12-month revenue CSV → 4 KPIs + 1 line chart + activeTab + fullCalcOnLoad. Adapt the numbers, don't copy-paste blind. Broken into phases so a single failed phase is obvious.
+最小構成のダッシュボード: 12ヶ月分の売上 CSV → KPI 4個 ＋ 折れ線チャート1個 ＋ activeTab ＋ fullCalcOnLoad。数値は状況に合わせて調整し、そのままコピペしないこと。フェーズに分割してあるので、どのフェーズが失敗したかが分かりやすい。
 
-**Phase 1 — Data sheet: create, import, format.**
+**フェーズ1 — Data シート: 作成、インポート、書式設定。**
 
 ```bash
 FILE=my_dashboard.xlsx
@@ -95,7 +95,7 @@ officecli set "$FILE" '/Sheet1/B2:B13' --prop numFmt='$#,##0'
 officecli set "$FILE" '/Sheet1/A1:B1' --prop fill=1F3864 --prop font.color=FFFFFF --prop font.bold=true
 ```
 
-**Phase 2 — Dashboard sheet + one KPI card.**
+**フェーズ2 — Dashboard シート ＋ KPI カード1個。**
 
 ```bash
 officecli add "$FILE" / --type sheet --prop name=Dashboard
@@ -105,7 +105,7 @@ officecli set "$FILE" /Dashboard/A1 --prop value="Total Revenue" --prop font.siz
 officecli set "$FILE" /Dashboard/A2 --prop 'formula==SUM(Sheet1!B2:B13)' --prop numFmt='$#,##0' --prop font.size=24 --prop bold=true --prop font.color=2E7D32
 ```
 
-**Phase 3 — Sparkline + chart.**
+**フェーズ3 — スパークライン ＋ チャート。**
 
 ```bash
 officecli add "$FILE" /Dashboard --type sparkline --prop cell=B2 --prop range='Sheet1!B2:B13' --prop type=line --prop color=4472C4 --prop highPoint=true --prop highMarkerColor=FF0000
@@ -119,12 +119,12 @@ officecli add "$FILE" /Dashboard --type chart \
   --prop x=0 --prop y=5 --prop width=10 --prop height=15
 ```
 
-**Phase 4 — fullCalcOnLoad → activeTab (LAST) → close → validate.**
+**フェーズ4 — fullCalcOnLoad → activeTab（最後）→ close → validate。**
 
 ```bash
 officecli set "$FILE" / --prop calc.fullCalcOnLoad=true
 
-# Resolve Dashboard's 0-based index from the actual sheet list — never hardcode.
+# Dashboard の 0 始まりインデックスを実際のシート一覧から解決する — 決してハードコードしない。
 DASH_IDX=$(officecli query "$FILE" sheet --json \
   | jq '[.data.results[].path] | index("/Dashboard")')
 officecli raw-set "$FILE" /workbook --xpath "//x:sheets" --action insertbefore \
@@ -133,15 +133,15 @@ officecli close "$FILE"
 officecli validate "$FILE"
 ```
 
-Verified end-to-end on a 12-row revenue CSV: `validate` reports no errors, Dashboard opens first, `Dashboard/A2.cachedValue` resolves (2,075,000 for the test data), chart renders with values linked.
+12行の売上 CSV でエンドツーエンド検証済み: `validate` はエラーなしを報告し、Dashboard が最初に開き、`Dashboard/A2.cachedValue` は解決される（テストデータで 2,075,000）。チャートは値がリンクされた状態でレンダリングされる。
 
-## Design Ideas
+## デザインのアイデア
 
-Options, not templates. The user's data and audience drive the choices.
+これらは選択肢であり、テンプレートではない。ユーザーのデータと想定読者が選択を決める。
 
-### Layout patterns (pick one, stay consistent)
+### レイアウトパターン（1つ選び、一貫させる）
 
-**Pattern 1 — executive summary** (board packs): KPI strip A1:H4, charts stack from row 6.
+**パターン1 — エグゼクティブサマリー**（役員向け資料）: KPI 帯を A1:H4 に、チャートは6行目から積み上げる。
 ```
 ┌ KPI1 │ KPI2 │ KPI3 │ KPI4 ┐  rows 1-4
 ├──────┴──────┴──────┴──────┤
@@ -150,7 +150,7 @@ Options, not templates. The user's data and audience drive the choices.
 │   Chart 2     │  Chart 3  │  rows 20-32
 ```
 
-**Pattern 2 — ops console** (live ops): KPIs down A:B, charts fill C:L.
+**パターン2 — オペレーションコンソール**（ライブ運用向け）: KPI を A:B に縦に並べ、チャートは C:L を埋める。
 ```
 │ KPI1 │                   │
 │ KPI2 │    Chart 1        │  rows 1-12
@@ -159,13 +159,13 @@ Options, not templates. The user's data and audience drive the choices.
 │ KPI5 │    Chart 2        │  rows 14-26
 ```
 
-**Pattern 3 — scorecard** (≥ 6 KPIs, no dominant chart): grid of 2×3 cards (label / value / sparkline).
+**パターン3 — スコアカード**（KPI 6個以上、支配的なチャートなし）: 2×3のカードグリッド（ラベル／値／スパークライン）。
 ```
 │ KPI1 │ KPI2 │ KPI3 │  rows 1-4
 │ KPI4 │ KPI5 │ KPI6 │  rows 5-8
 ```
 
-### Complexity scaling by data size
+### データ規模による複雑度のスケーリング
 
 | Rows | KPIs | Charts | Sparklines | CF rules | Preset |
 |---|---|---|---|---|---|
@@ -174,51 +174,51 @@ Options, not templates. The user's data and audience drive the choices.
 | 50–200 | 3–5 | 2–3 | only if sequential time-series | 2–3 | `dashboard` |
 | 200+ | 3–5 | 3 | only if sequential time-series | 3–4 | `dashboard` |
 
-### Chart type selection
+### チャート種別の選び方
 
 | Data pattern | Chart type | Notes |
 |---|---|---|
-| Trend over time, one series | `line` | Add `trendline=linear` to show direction on noisy series |
-| Trend over time, multiple components | `line` (multi-series) or `columnStacked` | Stacked when components sum to a meaningful total |
-| Comparison across categories in time order | `column` | Not `bar` — horizontal bars break left-to-right time reading |
-| Part-of-whole breakdown | `doughnut` | Prefer over `pie`: `chartType=pie` has a known LibreOffice blank-render regression |
-| Budget vs actual | `combo` with `combosplit=1` | First series as bars, rest as lines |
-| Correlation | `scatter` | X-axis via `categories` / `series1.categories` — `series1.xValues` is UNSUPPORTED |
+| Trend over time, one series | `line` | ノイズの多いシリーズで傾向を示すには `trendline=linear` を追加 |
+| Trend over time, multiple components | `line` (multi-series) or `columnStacked` | 各構成要素の合計が意味を持つ場合は積み上げ |
+| Comparison across categories in time order | `column` | `bar` ではない — 横棒グラフは左から右への時系列の読みを崩す |
+| Part-of-whole breakdown | `doughnut` | `pie` より優先: `chartType=pie` には既知の LibreOffice 空白レンダリングの不具合がある |
+| Budget vs actual | `combo` with `combosplit=1` | 最初のシリーズを棒グラフ、残りを折れ線に |
+| Correlation | `scatter` | X軸は `categories` / `series1.categories` 経由 — `series1.xValues` は未対応 |
 
-### Preset options
+### プリセットのオプション
 
-`--prop preset=<name>` on every chart. Options: `minimal`, `dashboard`, `corporate`, `magazine`, `colorful`, `monochrome`, `dark`. Pick one and stay consistent across all charts on a single Dashboard — mixing presets reads as accidental.
+すべてのチャートに `--prop preset=<name>` を付ける。選択肢: `minimal`、`dashboard`、`corporate`、`magazine`、`colorful`、`monochrome`、`dark`。1つを選び、1枚の Dashboard 上のすべてのチャートで一貫させること — プリセットを混在させると意図しない仕上がりに見える。
 
-### Conditional formatting — semantic colors
+### 条件付き書式 — 意味づけされた色
 
-Four CF rule types; each uses `--type <shorthand>` at `add` time:
+CF ルールは4種類。それぞれ `add` 時に `--type <shorthand>` を指定する:
 
 | Intent | `--type` | Typical props |
 |---|---|---|
-| Magnitude bar (sales, spend) | `databar` | `sqref=B2:B13 color=4472C4` — explicit `min=0 max=<plausible>` recommended for predictable scaling, but omitting them is valid (defaults to data min/max) |
-| Heat map (rates, growth) | `colorscale` | `sqref=D2:D13 mincolor=FFCDD2 midcolor=FFFFFF maxcolor=C8E6C9` |
-| Status indicator | `iconset` | `sqref=E2:E13 iconset=3Arrows` — see help for the full enum |
-| Custom business rule | `formulacf` | `sqref=B2:B13 'formula=$B2>=100000' fill=C8E6C9 font.color=2E7D32` — `font.bold` works on CF too |
+| 大きさを示すバー（売上、支出） | `databar` | `sqref=B2:B13 color=4472C4` — 予測可能なスケーリングのために明示的な `min=0 max=<plausible>` を推奨するが、省略しても有効（データの最小値／最大値がデフォルトになる） |
+| ヒートマップ（比率、成長率） | `colorscale` | `sqref=D2:D13 mincolor=FFCDD2 midcolor=FFFFFF maxcolor=C8E6C9` |
+| ステータスインジケーター | `iconset` | `sqref=E2:E13 iconset=3Arrows` — 完全な enum は help を参照 |
+| カスタムのビジネスルール | `formulacf` | `sqref=B2:B13 'formula=$B2>=100000' fill=C8E6C9 font.color=2E7D32` — `font.bold` も CF に効く |
 
-Semantic colors to stay consistent within a dashboard:
+ダッシュボード内で一貫させるべき意味づけされた色:
 
-- good / positive: fill `C8E6C9`, font `2E7D32`
-- bad / negative: fill `FFCDD2`, font `C62828`
-- neutral: fill `F5F5F5`, font `666666`
+- 良好／プラス: fill `C8E6C9`、font `2E7D32`
+- 不良／マイナス: fill `FFCDD2`、font `C62828`
+- 中立: fill `F5F5F5`、font `666666`
 
-### KPI card anatomy
+### KPI カードの構造
 
-A card is a label cell + a value cell. The label is small gray (font.size=9, font.color=666666, bold); the value is large bold (font.size=24, bold=true, numFmt, font.color signals tone). One row of light fill (e.g. `F0F4FF`) across the card area gives the "card" read without building merged-cell scaffolds. Value column width must be sized to the largest cachedValue — never narrower than 22, often 26–32 for 8+ digit currency (see Requirements).
+カードはラベルセル＋値セルで構成される。ラベルは小さいグレー（font.size=9、font.color=666666、bold）、値は大きく太字（font.size=24、bold=true、numFmt、トーンを示す font.color）。カード領域全体に淡い塗りつぶし（例: `F0F4FF`）を1行入れると、結合セルの足場を組まずに「カード」らしい見た目になる。値列の幅は最大の cachedValue に合わせてサイズを決める必要がある — 22未満にはせず、8桁以上の通貨には26〜32が多い（Requirements 参照）。
 
-### Chart width budget by title length
+### タイトル長によるチャート幅の目安
 
-At the `dashboard` preset's default title font, the chart plot-box width (in column units) must stay ahead of the title string, or the title clips mid-word. Rule of thumb: `chart.width ≥ ceil(title.length × 0.18)`. A 35-character title ("Department: Year-End Headcount vs Attrition Rate") needs `width ≥ 7`; be safer and use 10–12. If the anchor cannot be widened, shorten the title to ≤ 25 characters — clipped titles in a board-ready deliverable are indefensible.
+`dashboard` プリセットのデフォルトタイトルフォントでは、チャートのプロットボックス幅（列単位）はタイトル文字列より広く保たないと、タイトルが単語の途中で切れる。目安: `chart.width ≥ ceil(title.length × 0.18)`。35文字のタイトル（"Department: Year-End Headcount vs Attrition Rate"）には `width ≥ 7` が必要だが、安全のため10〜12を使うこと。アンカーを広げられない場合はタイトルを25文字以下に短縮する — 役員向け納品物でタイトルが切れているのは弁解の余地がない。
 
-`officecli get chart[N]` exposes numeric `width` (e.g. `width=480pt`) alongside `anchor` (e.g. `"A6:K21"`) at `.data.results[0].format`. Either is usable for Gate 2 — derive column span from anchor letters (A→K = 10 cols) when you need a column-unit budget.
+`officecli get chart[N]` は数値の `width`（例: `width=480pt`）と `anchor`（例: `"A6:K21"`）を `.data.results[0].format` に公開する。列単位の目安が必要な場合は、アンカーの文字（A→K = 10列）から列スパンを導出すればどちらも使える（Gate 2 用）。
 
-### Print-ready delivery (board-pack / investor-send / one-pager)
+### 印刷用の納品（board-pack／investor-send／one-pager）
 
-Triggers: ask contains "print" / "一页" / "董事会" / "投资人". Four artefacts on the Dashboard sheet; non-Dashboard sheets hidden so the print pipeline emits one page only.
+トリガー: 依頼文に "print" / "一页" / "董事会" / "投资人" が含まれる場合。Dashboard シートに4つの成果物を設定し、Dashboard 以外のシートは非表示にして、印刷パイプラインが1ページのみを出力するようにする。
 
 ```bash
 # 1. Print_Area scoped to Dashboard (xlnm convention).
@@ -233,26 +233,26 @@ for S in Sheet1 Summary; do
 done
 ```
 
-Delete any `Print_Area` set on Data / Summary sheets — conflicting scopes emit multi-page output.
+Data／Summary シートに設定された `Print_Area` は削除すること — スコープが競合すると複数ページ出力になる。
 
-## QA (REQUIRED — Delivery Gate)
+## QA（必須 — 納品ゲート）
 
-**Assume there are problems. Your job is to find them.** A chart that was rendered does not mean a chart that was meaningful. "validate pass" is not delivery; "the Dashboard sheet reads like someone who knows the business made it" is delivery.
+**問題は存在すると想定せよ。それを見つけるのがあなたの仕事だ。** チャートがレンダリングされたことは、そのチャートに意味があることを意味しない。「validate が通った」は納品ではない。「Dashboard シートがその事業を知る人が作ったように読める」ことが納品である。
 
-### Minimum cycle before "done"
+### "done" 前の最低限のサイクル
 
-Inherit the xlsx baseline (`view issues`, formula error queries, `validate`, HTML preview scan): → see officecli-xlsx §QA minimum cycle.
+xlsx のベースライン（`view issues`、数式エラークエリ、`validate`、HTML プレビューのスキャン）を継承する: → officecli-xlsx の §QA minimum cycle を参照。
 
-Then run the dashboard-specific Delivery Gates. Each gate uses **COUNT-then-if** pattern with a `.data.*` wrapper — never chain `&& echo OK || echo FAIL`.
+その後、ダッシュボード固有の納品ゲートを実行する。各ゲートは `.data.*` ラッパー付きの **COUNT-then-if** パターンを使う — `&& echo OK || echo FAIL` を連結してはならない。
 
-**Gate 1 — KPI formula coverage.** Every planned KPI cell must carry a formula. Adjust `-lt 2` to your plan (4 KPIs → `-lt 4`).
+**ゲート1 — KPI 数式カバレッジ。** 計画したすべての KPI セルに数式があること。`-lt 2` は計画に合わせて調整する（KPI 4個の計画なら `-lt 4`）。
 
 ```bash
 KPI_FORMULAS=$(officecli query "$FILE" 'Dashboard!:has(formula)' --json | jq '.data.results | length')
 [ "$KPI_FORMULAS" -lt 2 ] && { echo "REJECT Gate 1: $KPI_FORMULAS formula cells on Dashboard"; exit 1; }
 ```
 
-**Gate 2 — Chart count matches plan, every chart has data + plausible title width.**
+**ゲート2 — チャート数が計画通りで、すべてのチャートにデータとタイトル幅の妥当性があること。**
 
 ```bash
 CHART_COUNT=$(officecli query "$FILE" chart --json | jq '.data.results | length')
@@ -272,9 +272,9 @@ for i in $(seq 1 "$CHART_COUNT"); do
 done
 ```
 
-Narrower titles at preset `minimal` / `magazine` may clip earlier than the 0.18 factor — spot-check.
+プリセット `minimal` / `magazine` の狭いタイトルは、0.18 の係数より早く切れることがある — 目視確認すること。
 
-**Gate 3 — Chart series names populated (no "Series1" in legend).**
+**ゲート3 — チャートのシリーズ名が設定されていること（凡例に "Series1" が残っていないこと）。**
 
 ```bash
 for i in $(seq 1 "$CHART_COUNT"); do
@@ -283,16 +283,16 @@ for i in $(seq 1 "$CHART_COUNT"); do
 done
 ```
 
-**Gate 4 — CF rules on Data sheet (10+ rows).**
+**ゲート4 — Data シート（10行以上）に CF ルールがあること。**
 
 ```bash
 CF_COUNT=$(officecli query "$FILE" conditionalformatting --json | jq '.data.results | length')
 [ "$CF_COUNT" -lt 1 ] && { echo "REJECT Gate 4: zero CF rules on 10+ row data sheet"; exit 1; }
 ```
 
-Note: `query conditionalformatting` is the canonical element name; `query cf` returns 0 (not an alias).
+注: `query conditionalformatting` が正規の要素名である。`query cf` は 0 を返す（エイリアスではない）。
 
-**Gate 5 — activeTab and fullCalcOnLoad set.** Compare against real Dashboard index (Dashboard-at-index-0 is a true pass).
+**ゲート5 — activeTab と fullCalcOnLoad が設定されていること。** 実際の Dashboard インデックスと比較する（Dashboard がインデックス0であることは正しい合格とみなす）。
 
 ```bash
 DASH_IDX=$(officecli query "$FILE" sheet --json | jq '[.data.results[].path] | index("/Dashboard")')
@@ -302,23 +302,23 @@ FULLCALC=$(officecli get "$FILE" /workbook --json | jq -r '.data.results[0].form
 [ "$FULLCALC" != "true" ] && { echo "REJECT Gate 5: calc.fullCalcOnLoad=$FULLCALC — stale caches will ship"; exit 1; }
 ```
 
-**Gate 6 — Placeholder sweep.** No build-time tokens in rendered output.
+**ゲート6 — プレースホルダーの一斉点検。** レンダリングされた出力にビルド時のトークンが残っていないこと。
 
 ```bash
 LEAKS=$(officecli view "$FILE" text 2>/dev/null | grep -niE '\{\{|\$fy\$|<TODO>|xxxx|TBD' | wc -l | tr -d ' ')
 [ "$LEAKS" -gt 0 ] && { echo "REJECT Gate 6: $LEAKS placeholder tokens"; exit 1; }
 ```
 
-**Gate 7 — Visual delivery floor (ported from xlsx).** Run `officecli view "$FILE" html` and Read the returned HTML path. Confirm:
+**ゲート7 — 視覚的な納品下限（xlsx から移植）。** `officecli view "$FILE" html` を実行し、返された HTML パスを Read すること。以下を確認する:
 
-- No `###` in any Dashboard or Data cell (columns too narrow).
-- No truncated KPI labels, sheet tab names, or chart titles.
-- No placeholder tokens rendered as text (`$fy$24`, `{var}`, `<TODO>`, `xxxx`).
-- Pie / doughnut slices render with distinct fill colors (if collapsed in LibreOffice, verify in the user's target viewer before declaring broken — → see officecli-xlsx §Known Issues/Renderer caveats).
-- No empty chart anchors — every chart has a visible, plausible plot.
-- Dashboard sheet opens first (tab highlighted, active area scrolled to top).
+- Dashboard／Data のどのセルにも `###` が出ていないこと（列幅が狭すぎない）。
+- KPI ラベル、シートタブ名、チャートタイトルが切り詰められていないこと。
+- プレースホルダートークンがテキストとしてレンダリングされていないこと（`$fy$24`、`{var}`、`<TODO>`、`xxxx`）。
+- 円グラフ／ドーナツグラフのスライスがそれぞれ異なる塗り色でレンダリングされていること（LibreOffice で潰れて見える場合は、壊れていると断定する前にユーザーの対象ビューアで確認する — → officecli-xlsx の §Known Issues/Renderer caveats を参照）。
+- 空のチャートアンカーがないこと — すべてのチャートに可視で妥当なプロットがあること。
+- Dashboard シートが最初に開くこと（タブがハイライトされ、アクティブ領域が先頭にスクロールされている）。
 
-If `view html` is blocked (renderer conflict, headless, port busy), Gate 7 is still **mandatory** — run ALL fallback checks:
+`view html` がブロックされた場合（レンダラーの競合、ヘッドレス、ポート使用中）でも、ゲート7は依然として**必須**である — フォールバックのチェックを**すべて**実行すること:
 
 ```bash
 # a) Token / ### sweep.
@@ -333,9 +333,9 @@ done
 # c) Rerun Gate 2 title × 0.18 ≤ anchor span.  d) Log which fallback was used and why.
 ```
 
-Gate 7 must **NEVER** be skipped — skipping ships `###` to the user.
+ゲート7を**絶対に**スキップしてはならない — スキップすればユーザーに `###` が届く。
 
-If scene keywords include print / 一页 / board / 投资人 / 董事会, extend Gate 7 with a structural print-scope check:
+シーンのキーワードに print / 一页 / board / 投资人 / 董事会 が含まれる場合は、ゲート7を構造的な印刷スコープチェックで拡張する:
 
 ```bash
 if echo "$USER_REQ" | grep -qiE 'print|一页|投资人|董事会|board'; then
@@ -355,9 +355,9 @@ if echo "$USER_REQ" | grep -qiE 'print|一页|投资人|董事会|board'; then
 fi
 ```
 
-The user opens the file in their target viewer (Office / WPS / Numbers) for the final print preview — the skill does not render export artefacts.
+ユーザーは最終的な印刷プレビューのために、対象ビューア（Office / WPS / Numbers）でファイルを開く — 本スキルはエクスポート成果物のレンダリングは行わない。
 
-**Gate 8 — Formula sanity (cachedValue real, not stale/error).** `fullCalcOnLoad=true` refreshes at runtime, NOT build-time cache — so every formula cell must carry a non-empty, non-zero, non-error `cachedValue` now.
+**ゲート8 — 数式の健全性（cachedValue が本物であり、古い値やエラーではないこと）。** `fullCalcOnLoad=true` は**実行時**の再計算を保証するが、ビルド時の XML 内キャッシュは更新しない — したがって、すべての数式セルは今この時点で、空でなく、ゼロでなく、エラーでもない `cachedValue` を保持していなければならない。
 
 ```bash
 for CELL in A2 C2 E2 G2; do
@@ -371,45 +371,45 @@ for CELL in A2 C2 E2 G2; do
 done
 ```
 
-If a KPI is genuinely zero (e.g. "terminations this quarter" = 0), whitelist it in the loop and document — default assumption is "zero is broken".
+KPI が本当にゼロである場合（例:「今四半期の退職者数」＝0）は、ループ内でホワイトリストに入れて明記すること — デフォルトの前提は「ゼロは壊れている」である。
 
-If anything fails, fix at source, re-run the full cycle.
+何か失敗した場合は、根本原因を修正し、サイクル全体を再実行すること。
 
-### Honest limits
+### 正直な限界
 
-Scatter charts do not accept `series1.xValues` (UNSUPPORTED) — feed the x-axis via `categories` / `series1.categories`. LibreOffice chart color drift / pie-slice collapse / checkbox double-box are viewer artifacts — spot-check in Office / WPS / Numbers first.
+散布図は `series1.xValues`（未対応）を受け付けない — X 軸は `categories` / `series1.categories` 経由で与える。LibreOffice のチャート色のずれ／円グラフスライスの潰れ／チェックボックスの二重枠はビューアの表示上の癖であり、まず Office / WPS / Numbers で目視確認すること。
 
 ## Reference
 
-- **Shorthand `--type` at `add`:** `chart`, `sparkline`, `databar`, `colorscale`, `iconset`, `formulacf`. CF rules map to `help xlsx conditionalformatting`; path suffix `/Sheet/cf[N]`.
-- **Full schemas live in help:** `officecli help xlsx chart` / `sparkline` / `conditionalformatting`. This skill does not mirror them.
-- **DeferredAddKeys (add-only):** `combosplit`, `holesize`. See D-1. (`preset`, `trendline`, `referenceline`, `axisNumFmt` now work on `set` too — help shows `[add/set]`.)
-- **Build order:** charts + sparklines + CF + tabColors first → `calc.fullCalcOnLoad=true` via high-level `set` → `raw-set activeTab` **LAST** (after all sheets exist).
+- **`add` 時の shorthand `--type`:** `chart`、`sparkline`、`databar`、`colorscale`、`iconset`、`formulacf`。CF ルールは `help xlsx conditionalformatting` にマッピングされる。パスの接尾辞は `/Sheet/cf[N]`。
+- **完全なスキーマは help にある:** `officecli help xlsx chart` / `sparkline` / `conditionalformatting`。本スキルはそれらを複製しない。
+- **DeferredAddKeys（add のみ）:** `combosplit`、`holesize`。D-1 参照。（`preset`、`trendline`、`referenceline`、`axisNumFmt` は現在 `set` でも使える — help に `[add/set]` と表示される。）
+- **構築順序:** チャート＋スパークライン＋CF＋tabColors を先に → 高水準の `set` で `calc.fullCalcOnLoad=true` → `raw-set activeTab` は**最後**（すべてのシートが存在した後）。
 
-## Known Issues & Pitfalls
+## 既知の問題と落とし穴
 
-### Dashboard-specific
+### ダッシュボード固有
 
 | # | Issue | Mitigation |
 |---|---|---|
-| D-1 | `combosplit` is a DeferredAddKey — works on `add` only. (`preset`, `referenceline`, `trendline`, `axisNumFmt` now apply on `set` too — help shows `[add/set]`.) | Set `combosplit` at `add` time; cannot apply after the fact — remove + re-add. The other four can be applied or changed post-creation via `set`. |
-| D-2 | `referenceline` format is `value:color:label:dash` (color BEFORE label). `"0:Break-Even:FF0000:dash"` fails `Invalid color value`. | Order is value, color, label, dash. |
-| D-3 | Scatter charts do NOT accept `series1.xValues` (UNSUPPORTED). Feed the x-axis through `categories` / `series1.categories`. | `--prop series1.categories="Sheet1!A2:A13"` (or `--prop categories="Sheet1!A2:A13"`) |
-| D-4 | `formulacf` honors `font.bold` / `font.italic` (written to the dxf font and surfaced on readback), alongside `fill` and `font.color`. | Use any of `fill` / `font.color` / `font.bold` / `font.italic` to signal a CF rule. |
-| D-5 | Dashboard column widths default to 8.43 — KPI values at 24pt bold show `###` | Size by cachedValue bracket: 4–6 digits → 22–24; 7–9 digits (million) → 26–30; 10+ digits (亿 / billion) → 32–36; 百亿 / 10-digit + currency symbol + fit-to-page landscape → **40–44**. Formula `ceil((visible_chars+2)*1.3)` is a starting point; always verify via Gate 7 fallback b). Sparkline columns: 12. |
-| D-6 | `raw-set activeTab` must be the LAST mutation. Inserting before all sheets exist shifts indices. | Finish all sheets / charts / CF / sparklines / tabColors, then `raw-set`. |
-| D-7 | `calc.fullCalcOnLoad` via `raw-set` creates duplicate `<calcPr>` → validate fails | Use `officecli set "$FILE" / --prop calc.fullCalcOnLoad=true`. |
-| D-8 | LibreOffice does not evaluate hidden-column formulas at render → charts referencing hidden cells render blank | Aggregate into a visible Summary sheet, chart reads from Summary. Hide only columns that are not chart sources. |
-| D-9 | `chartType=pie` blank-renders in LibreOffice | Use `doughnut` as the safe substitute for part-of-whole breakdowns. |
-| D-10 | `SUMIFS` / `AVERAGEIFS` with date criteria fails silently if the criterion is a string | Wrap with `DATE()` or `DATEVALUE()`: `=SUMIFS(B2:B13,A2:A13,DATE(2025,1,5))`. |
-| D-11 | Summary sheet percentage formulas display as raw decimals (0.098) without `numFmt` | Set `numFmt="0.0%"` at the same `set` call as the formula. |
-| D-12 | `import --header` sets freeze + AutoFilter but does NOT set column widths. | Set widths on `col[]`. `numFmt` on a `col[]` path now applies a column-level style (`<col s=...>`, schema-valid, reads back as `numberformat`); it formats blank cells in the column. Cells with their own style still need a per-cell-range `numFmt`. |
-| D-13 | Sparkline `highpoint` is a bool (highlight on/off), not a color. `--prop highpoint=FF0000` errors `Invalid boolean value` | `--prop highPoint=true --prop highMarkerColor=FF0000`. Same pattern for lowPoint / firstPoint / lastPoint and their *MarkerColor. |
-| D-14 | Sparkline cross-sectional data is meaningless (a region or department has no ordering) | Skip sparklines unless rows are a sequential time-series (dates, months, quarters). |
-| D-15 | Empty chart `add` is rejected (`Chart requires a 'data' property`) at the CLI layer — legacy skills that relied on silent accept will fail here | Always provide `series1.values=` / `dataRange=` / inline `data=` at chart `add` time. Treat Gate 2 seriesCount check as a belt-and-braces verification. |
-| D-16 | `fullCalcOnLoad=true` guarantees a **runtime** recalc when the end user opens the file; it does NOT refresh the build-time `cachedValue` in XML. Build sequence `set B=100 → set E==B+D → fix B=150` leaves `E.cachedValue` stale (board sees "Net Change = 0"). | After all upstream edits are final, re-issue every downstream formula (`officecli set "$FILE" /Sheet/E2 --prop formula==B2+D2`) OR `close` + re-open the file. Gate 8 verifies. |
-| D-17 | The built-in calc engine does NOT evaluate `SUMPRODUCT` with array-predicate form `SUMPRODUCT((A2:A97=X)*C2:C97*D2:D97)` — cachedValue stays `0`/`null`, Gate 8 rejects. Runtime Excel / WPS compute fine, but board-delivered XLSX with stale cache still ships `0`. | Rewrite as helper column + `SUMIF`: `F2==C2*D2` on source sheet, then `=SUMIF(B:B, "Region X", F:F)`. Or pre-aggregate in Summary sheet and chart from there. |
+| D-1 | `combosplit` は DeferredAddKey — `add` 時のみ有効。（`preset`、`referenceline`、`trendline`、`axisNumFmt` は現在 `set` でも適用可能 — help に `[add/set]` と表示される。） | `combosplit` は `add` 時に設定すること。後から適用はできない — 削除して再追加する。他の4つは `set` で作成後に適用・変更できる。 |
+| D-2 | `referenceline` の形式は `value:color:label:dash`（color が label より先）。`"0:Break-Even:FF0000:dash"` は `Invalid color value` で失敗する。 | 順序は value、color、label、dash。 |
+| D-3 | 散布図は `series1.xValues` を受け付けない（未対応）。X軸は `categories` / `series1.categories` 経由で与える。 | `--prop series1.categories="Sheet1!A2:A13"`（または `--prop categories="Sheet1!A2:A13"`） |
+| D-4 | `formulacf` は `fill` と `font.color` に加え、`font.bold` / `font.italic` を尊重する（dxf の font に書き込まれ、読み戻し時にも反映される）。 | `fill` / `font.color` / `font.bold` / `font.italic` のいずれかで CF ルールを表現する。 |
+| D-5 | Dashboard の列幅はデフォルト 8.43 — 24pt bold の KPI 値は `###` になる | cachedValue の桁数帯でサイズを決める: 4〜6桁 → 22〜24；7〜9桁（百万単位）→ 26〜30；10桁以上（億／billion）→ 32〜36；百億／10桁＋通貨記号＋fit-to-page ランドスケープ → **40〜44**。数式 `ceil((visible_chars+2)*1.3)` は出発点にすぎない — 必ずゲート7のフォールバック b) で検証すること。スパークライン用の列: 12。 |
+| D-6 | `raw-set activeTab` は**最後の**変更でなければならない。すべてのシートが揃う前に挿入するとインデックスがずれる。 | すべてのシート／チャート／CF／スパークライン／tabColors を仕上げてから `raw-set` する。 |
+| D-7 | `raw-set` 経由の `calc.fullCalcOnLoad` は `<calcPr>` の重複を生み validate が失敗する | `officecli set "$FILE" / --prop calc.fullCalcOnLoad=true` を使う。 |
+| D-8 | LibreOffice はレンダリング時に非表示列の数式を評価しない → 非表示セルを参照するチャートは空白でレンダリングされる | 可視の Summary シートに集計し、チャートは Summary から読み取る。チャートのデータ元でない列だけを非表示にする。 |
+| D-9 | `chartType=pie` は LibreOffice で空白レンダリングになる | 部分-全体の内訳には安全な代替として `doughnut` を使う。 |
+| D-10 | 日付条件を伴う `SUMIFS` / `AVERAGEIFS` は、条件が文字列だと静かに失敗する | `DATE()` または `DATEVALUE()` でラップする: `=SUMIFS(B2:B13,A2:A13,DATE(2025,1,5))`。 |
+| D-11 | Summary シートのパーセンテージ数式は `numFmt` なしでは生の小数（0.098）として表示される | 数式と同じ `set` 呼び出しで `numFmt="0.0%"` を設定する。 |
+| D-12 | `import --header` はフリーズ枠と AutoFilter を設定するが、列幅は設定しない。 | `col[]` に幅を設定する。`col[]` パスへの `numFmt` は現在、列レベルのスタイル（`<col s=...>`、スキーマ有効、読み戻し時に `numberformat` として表示）を適用する。これは列内の空セルを書式付ける。独自スタイルを持つセルにはセル範囲ごとの `numFmt` が別途必要。 |
+| D-13 | スパークラインの `highpoint` は bool（ハイライトの on/off）であり、色ではない。`--prop highpoint=FF0000` は `Invalid boolean value` でエラーになる | `--prop highPoint=true --prop highMarkerColor=FF0000`。lowPoint / firstPoint / lastPoint とその *MarkerColor も同じパターン。 |
+| D-14 | スパークラインの横断的（cross-sectional）データは意味を持たない（地域や部門には順序がない） | 行が時系列（日付、月、四半期）でない限り、スパークラインは省略する。 |
+| D-15 | 空のチャート `add` は CLI 層で拒否される（`Chart requires a 'data' property`）— サイレント受理に依存していた旧来のスキルはここで失敗する | チャート `add` 時には常に `series1.values=` / `dataRange=` / インラインの `data=` のいずれかを与えること。ゲート2の seriesCount チェックは、念のための追加検証として扱う。 |
+| D-16 | `fullCalcOnLoad=true` は、エンドユーザーがファイルを開いた時に**実行時**の再計算を保証するが、XML 内のビルド時 `cachedValue` は更新しない。構築順序 `set B=100 → set E==B+D → fix B=150` では `E.cachedValue` が古いまま残る（ボードには "Net Change = 0" と見える）。 | すべての上流編集が確定した後、下流のすべての数式を再発行する（`officecli set "$FILE" /Sheet/E2 --prop formula==B2+D2`）か、`close` して再度開く。ゲート8で検証する。 |
+| D-17 | 組み込みの計算エンジンは、配列述語形式の `SUMPRODUCT((A2:A97=X)*C2:C97*D2:D97)` を評価しない — cachedValue は `0`/`null` のままとなり、ゲート8で拒否される。実行時の Excel / WPS では正しく計算されるが、キャッシュが古いまま納品された XLSX は依然として `0` を出す。 | ヘルパー列＋`SUMIF` に書き換える: ソースシート上で `F2==C2*D2`、その後 `=SUMIF(B:B, "Region X", F:F)`。あるいは Summary シートで事前集計し、そこからチャートを作る。 |
 
-### Inherited (pointer only)
+### 継承（ポインターのみ）
 
-Cross-sheet `!` trap, chart `anchor` / series immutability after create → see officecli-xlsx §Known Issues.
+シート横断の `!` の罠、作成後のチャート `anchor` ／シリーズの不変性 → officecli-xlsx の §Known Issues を参照。
