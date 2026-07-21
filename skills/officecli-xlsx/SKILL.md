@@ -1,109 +1,109 @@
 ---
 name: officecli-xlsx
-description: "Use this skill any time a .xlsx file is involved -- as input, output, or both. This includes: creating spreadsheets, financial models, dashboards, or trackers; reading, parsing, or extracting data from any .xlsx file; editing, modifying, or updating existing workbooks; working with formulas, charts, pivot tables, or templates; importing CSV/TSV data into Excel format. Trigger whenever the user mentions 'spreadsheet', 'workbook', 'Excel', 'financial model', 'tracker', 'dashboard', or references a .xlsx/.csv filename."
+description: "このスキルは .xlsx ファイルが関わる場面 -- 入力・出力いずれか、または両方 -- で常に使用する。具体的には次のような場合が含まれる: スプレッドシート、財務モデル、ダッシュボード、トラッカーの作成; 任意の .xlsx ファイルからのデータの読み取り・パース・抽出; 既存ワークブックの編集・変更・更新; 数式、チャート、ピボットテーブル、テンプレートの操作; CSV/TSV データの Excel 形式へのインポート。ユーザーが「スプレッドシート」「ワークブック」「Excel」「財務モデル」「トラッカー」「ダッシュボード」に言及した場合、または .xlsx/.csv のファイル名を参照した場合にトリガーする。"
 ---
 
-# OfficeCLI XLSX Skill
+# OfficeCLI XLSX スキル
 
-## Setup
+## セットアップ
 
-If `officecli` is missing:
+`officecli` が見つからない場合:
 
 - **macOS / Linux**: `curl -fsSL https://d.officecli.ai/install.sh | bash`
 - **Windows (PowerShell)**: `irm https://d.officecli.ai/install.ps1 | iex`
 
-Verify with `officecli --version` (open a new terminal if PATH hasn't picked up). If install fails, download a binary from https://github.com/iOfficeAI/OfficeCLI/releases.
+`officecli --version` で確認する（PATH が反映されない場合は新しいターミナルを開く）。インストールに失敗した場合は https://github.com/iOfficeAI/OfficeCLI/releases からバイナリをダウンロードする。
 
-## ⚠️ Help-First Rule
+## ⚠️ ヘルプ最優先ルール
 
-**This skill teaches what good xlsx looks like, not every command flag. When a property name, enum value, or alias is uncertain, consult help BEFORE guessing.**
+**このスキルは「良い xlsx とは何か」を教えるものであり、すべてのコマンドフラグを網羅するものではない。プロパティ名、enum 値、エイリアスが不確かな場合は、推測する前に必ずヘルプを確認すること。**
 
 ```bash
-officecli help xlsx                         # List all xlsx elements
-officecli help xlsx <element>               # Full element schema (e.g. pivottable, chart, cf)
-officecli help xlsx <verb> <element>        # Verb-scoped (e.g. add chart, set cell)
-officecli help xlsx <element> --json        # Machine-readable schema
+officecli help xlsx                         # xlsx の全要素を一覧表示
+officecli help xlsx <element>               # 要素の完全なスキーマ（例: pivottable、chart、cf）
+officecli help xlsx <verb> <element>        # 動詞スコープ（例: add chart、set cell）
+officecli help xlsx <element> --json        # 機械可読なスキーマ
 ```
 
-Help reflects the installed CLI version. When this skill and help disagree, **help is authoritative**.
+ヘルプはインストール済みの CLI バージョンを反映する。このスキルとヘルプの内容が食い違う場合は、**ヘルプが正**である。
 
-## Shell & Execution Discipline
+## シェルと実行の規律
 
-**Shell quoting (zsh / bash).** Excel paths contain `[]`, and number formats contain `$`. Both are shell metacharacters. Rules:
+**シェルクォーティング（zsh / bash）。** Excel のパスには `[]` が含まれ、数値書式には `$` が含まれる。どちらもシェルのメタ文字である。ルール:
 
-- ALWAYS quote element paths: `"/Sheet1/row[1]"`, not `/Sheet1/row[1]`.
-- Use **single quotes** for any prop value containing `$`: `numFmt='$#,##0'`.
-- For formulas with cross-sheet `!` references, use `batch` with a `<<'EOF'` heredoc (see Known Issues).
-- `\n` and `\t` in a prop value ARE interpreted by the CLI — `\n` is a real in-cell line break (pair with `--prop wrapText=true`), `\t` a tab — consistent across xlsx / docx / pptx. Double them (`\\n`) for a literal backslash-n (rarely wanted). (`$` is the shell layer above — single-quote it.)
+- 要素パスは常にクォートする: `"/Sheet1/row[1]"` であって `/Sheet1/row[1]` ではない。
+- `$` を含むプロパティ値には**シングルクォート**を使う: `numFmt='$#,##0'`。
+- シート間参照の `!` を含む数式は、`batch` と `<<'EOF'` ヒアドキュメントを使う（後述の「既知の問題」参照）。
+- プロパティ値中の `\n` と `\t` は CLI によって解釈される —— `\n` はセル内の実改行になり（`--prop wrapText=true` と組み合わせる）、`\t` はタブになる —— これは xlsx / docx / pptx で共通の挙動である。リテラルなバックスラッシュ + n を得たい場合（めったにないが）は二重にする（`\\n`）。（`$` は上位のシェル層の話であり、シングルクォートで対処する。）
 
-**Incremental execution.** Run commands one at a time and read each exit code. `officecli` mutates the file on every call; a 50-command script that fails at command 3 will cascade silently. One command → check output → continue.
+**インクリメンタルな実行。** コマンドは1つずつ実行し、都度終了コードを確認する。`officecli` は呼び出しごとにファイルを変更するため、3番目のコマンドで失敗する50コマンドのスクリプトは、失敗が静かに連鎖する。1コマンド実行 → 出力確認 → 次へ進む、を徹底する。
 
-## Requirements for Outputs
+## 成果物への要件
 
-Before reaching for a command, know what a good xlsx looks like. These are the deliverable standards every workbook MUST meet.
+コマンドに手を出す前に、良い xlsx がどのようなものかを把握しておく。以下は、納品するすべてのワークブックが満たさなければならない品質基準である。
 
-### All Excel files
+### すべての Excel ファイル
 
-**Zero formula errors.** Every delivered workbook MUST have ZERO `#REF!`, `#DIV/0!`, `#VALUE!`, `#NAME?`, `#N/A`. No exceptions — guard denominators with `IFERROR` or `IF(x=0,...)`.
+**数式エラーゼロ。** 納品するワークブックは `#REF!`、`#DIV/0!`、`#VALUE!`、`#NAME?`、`#N/A` を一つも含んではならない。例外なし —— 分母は `IFERROR` または `IF(x=0,...)` でガードする。
 
-**Formulas, not hardcoded values.** If a number can be computed from other cells, it is a formula. Hardcoding `5000` where `=SUM(B2:B9)` belongs breaks the contract that the workbook stays live when inputs change. This is the single most important rule in this skill.
+**数式であり、ハードコードされた値ではない。** 他のセルから計算できる数値は数式にする。`=SUM(B2:B9)` であるべき箇所に `5000` をハードコードすると、入力が変わってもワークブックが「生きたまま」であるという契約が壊れる。これはこのスキルにおける最も重要なルールである。
 
-**Professional font.** Use one consistent, professional font across the workbook (Arial / Calibri / Times New Roman). Don't mix four fonts because one sheet came from CSV.
+**プロフェッショナルなフォント。** ワークブック全体で一貫した、プロフェッショナルなフォント（Arial / Calibri / Times New Roman）を使う。あるシートが CSV 由来だからといって、4種類ものフォントを混在させない。
 
-**Explicit widths.** There is no auto-fit. Any column the user will read MUST have `width` set — default 8.43 chars clips everything. Sensible starts: labels 20-25, numbers 12-15, dates 12, short codes 8-10.
+**明示的な幅。** 自動フィットは存在しない。ユーザーが読むすべての列には `width` を設定しなければならない —— デフォルトの 8.43 文字幅ではすべてが見切れる。妥当な初期値: ラベル 20〜25、数値 12〜15、日付 12、短いコード 8〜10。
 
-**Preserve existing templates.** When editing a file that already has a look, match it. Existing conventions override these guidelines.
+**既存のテンプレートを尊重する。** 既にルック＆フィールが確立されているファイルを編集する場合は、それに合わせる。既存の慣習はこのガイドラインより優先される。
 
-### Visual delivery floor (applies to EVERY workbook)
+### 視覚的な納品基準（すべてのワークブックに適用）
 
-Before you declare done, run `officecli view "$FILE" html` and Read the returned HTML path to confirm all of these:
+完了を宣言する前に、`officecli view "$FILE" html` を実行し、返された HTML を Read して以下をすべて確認する:
 
-- **No `###` in any cell.** `###` means a column is too narrow for its widest value. Every column the user reads needs an explicit `width`. `###` in a delivered file is unfinished work, never "a small visual nit".
-- **No truncated titles.** Sheet titles, section headers, long labels must fit. Widen the column or apply `wrapText=true` on the cell.
-- **No placeholder tokens rendered as data.** `$fy$24`, `{var}`, `<TODO>`, `xxxx` must never appear in a cell, chart title, series name, or legend. These are build-time tokens that escaped replacement.
-- **Pie / doughnut slices have distinct fill colors.** If the slices render same-colored, switch to `bar` / `column` or set `colors=...` explicitly.
-- **No empty trailing pages / empty chart anchors.** `anchor=D2:J18` over empty source cells looks like a broken chart.
+- **どのセルにも `###` がないこと。** `###` は列がその中の最大値を表示するには狭すぎることを意味する。ユーザーが読むすべての列には明示的な `width` が必要である。納品ファイルに `###` が残っているのは未完成の仕事であり、「些細な見た目の問題」では決してない。
+- **タイトルが切れていないこと。** シートタイトル、セクション見出し、長いラベルはすべて収まっていなければならない。列を広げるか、セルに `wrapText=true` を適用する。
+- **プレースホルダートークンがデータとして表示されていないこと。** `$fy$24`、`{var}`、`<TODO>`、`xxxx` がセル、チャートタイトル、シリーズ名、凡例に出現してはならない。これらは置換されずに残ったビルド時トークンである。
+- **円グラフ／ドーナツグラフのスライスが個別の塗り色を持っていること。** スライスが同色でレンダリングされる場合は、`bar` / `column` に切り替えるか、`colors=...` を明示的に設定する。
+- **末尾に空のページや空のチャートアンカーがないこと。** 空のソースセル上に `anchor=D2:J18` を置くと、壊れたチャートのように見える。
 
-If any of the above fails, STOP and fix before declaring done.
+上記のいずれかに該当する場合は、完了を宣言する前に立ち止まって修正すること。
 
-**Print layout.** Any sheet the user may print or send as a board pack needs page setup. Default portrait + no fit-to-page splits wide tables and charts mid-way. Pick the fit mode by sheet shape:
+**印刷レイアウト。** ユーザーが印刷したり役員向け資料として送付したりする可能性のあるシートには、ページ設定が必要である。デフォルトの縦向き＋改ページなしのままだと、横長の表やチャートが途中で分割される。シートの形状に応じて fit モードを選ぶ:
 
 ```bash
-# Summary / chart / dashboard sheet (small, ≤ ~40 rows): fit to a single page.
+# サマリー／チャート／ダッシュボードシート（小さめ、行数 40 程度以下）: 1ページに収める。
 officecli set "$FILE" "/Summary" --prop orientation=landscape --prop fitToPage=true
-# Tall data table (dozens+ rows): fit WIDTH only, let height paginate naturally.
-# fitToPage=true here crushes every row onto one page → unreadable (### dates, 5px rows).
+# 縦に長いデータ表（数十行以上）: 幅だけを1ページに収め、高さは自然にページ送りさせる。
+# ここで fitToPage=true にすると全行が1ページに押し込まれ、読めなくなる（### 化した日付、5px の行高）。
 officecli set "$FILE" "/Data" --prop orientation=landscape --prop fitToPage=1x0
 ```
 
-`fitToPage=true` == `1x1` == fit both axes to one page — correct only when the sheet is already short. `1x0` = fit 1 page wide, unlimited pages tall. Trigger: sheet holds a chart, or > 8 columns, or the user's ask mentions print / board / investor.
+`fitToPage=true` は `1x1`、つまり両軸を1ページに収める指定と同じである —— これはシートがすでに短い場合にのみ正しい。`1x0` は幅1ページ・高さ無制限を意味する。トリガー条件: シートがチャートを含む、8列を超える、またはユーザーの依頼に印刷／役員会／投資家という言葉が含まれる場合。
 
-### Financial models only — skip this section if you are building a template, tracker, CSV import, or operational sheet
+### 財務モデル限定 —— テンプレート、トラッカー、CSV インポート、業務用シートを作る場合はこの節をスキップしてよい
 
-Scope: budgets, forecasts, 3-statement models, valuation, any `$`-heavy analytical workbook. A customer-support tracker or onboarding template does not need this section.
+対象範囲: 予算、予測、3表連動モデル、バリュエーション、`$` が多用される分析系ワークブック全般。カスタマーサポート用トラッカーやオンボーディングテンプレートにはこの節は不要である。
 
-**Color coding — industry standard.** Five core colors used as a language, not decoration. A reviewer should tell what a cell IS by color alone — before reading the formula.
+**カラーコーディング —— 業界標準。** 5つの基本色を、装飾ではなく言語として使う。レビュアーは数式を読む前に、色だけを見てそのセルが何であるかがわかるべきである。
 
-| Color | Role | Example |
+| 色 | 役割 | 例 |
 |---|---|---|
-| Blue text `0000FF` | Hardcoded inputs, scenario variables | `font.color=0000FF` |
-| Black text `000000` | ALL formulas and calculations | default |
-| Green text `008000` | Cross-sheet links inside this workbook | `font.color=008000` |
-| Red text `FF0000` | Links to external files / workbooks | `font.color=FF0000` |
-| Yellow fill `FFFF00` | Key assumptions needing review | `fill=FFFF00` |
+| 青字 `0000FF` | ハードコードされた入力値、シナリオ変数 | `font.color=0000FF` |
+| 黒字 `000000` | すべての数式・計算 | デフォルト |
+| 緑字 `008000` | このワークブック内のシート間リンク | `font.color=008000` |
+| 赤字 `FF0000` | 外部ファイル／外部ワークブックへのリンク | `font.color=FF0000` |
+| 黄色塗り `FFFF00` | レビューが必要な重要な前提条件 | `fill=FFFF00` |
 
-A reviewer should tell what a cell IS just by its color — before reading the formula. This is a communication contract, not a cosmetic preference.
+レビュアーは数式を読む前に、色だけを見てそのセルが何であるかがわかるべきである。これは見た目の好みではなく、コミュニケーション上の約束事である。
 
-**Number formatting — standards, not preferences.**
+**数値書式 —— 好みではなく標準。**
 
-- **Years** are text, not numbers. Format `2026` not `2,026` — use `numFmt="@"` or set `type=string`.
-- **Currency** carries its unit in the header (`Revenue ($mm)`), not in every cell.
-- **Zeros display as `-`**, not `0`. Use `$#,##0;($#,##0);"-"`.
-- **Percentages** default to one decimal: `0.0%`.
-- **Negatives use parentheses**: `(1,234)` not `-1,234`.
-- **Valuation multiples** use `0.0x` format (EV/EBITDA, P/E, etc.).
+- **年**はテキストであり、数値ではない。`2,026` ではなく `2026` と表示する —— `numFmt="@"` を使うか `type=string` を設定する。
+- **通貨**は単位をヘッダーに持たせる（`Revenue ($mm)`）。セルごとに繰り返さない。
+- **ゼロは `-` として表示**し、`0` としては表示しない。`$#,##0;($#,##0);"-"` を使う。
+- **パーセンテージ**はデフォルトで小数点以下1桁とする: `0.0%`。
+- **負の数は括弧を使う**: `-1,234` ではなく `(1,234)`。
+- **バリュエーション倍率**は `0.0x` 形式を使う（EV/EBITDA、P/E など）。
 
-**Assumptions live in cells, not inside formulas.** `=B5*(1+$B$6)` is correct; `=B5*1.05` is a bug. Document each blue hardcoded input with an adjacent source note in the next cell or a cell comment:
+**前提条件はセルに置き、数式の中に埋め込まない。** `=B5*(1+$B$6)` は正しく、`=B5*1.05` はバグである。青色でハードコードされた各入力値には、隣のセルまたはセルコメントに出典を明記する:
 
 ```
 Source: Company 10-K, FY2024, Page 45, Revenue Note
@@ -111,22 +111,22 @@ Source: Bloomberg, 2026-05-02, AAPL US Equity
 Source: Management guidance, Q2 2026 earnings call
 ```
 
-Any hardcoded number without a source is an undocumented assumption — a reviewer cannot audit it.
+出典のないハードコードされた数値は、未文書化の前提条件である —— レビュアーはそれを監査できない。
 
-## Common Workflow
+## 共通ワークフロー
 
-Six steps. Every non-trivial build follows this shape.
+6ステップ。ある程度の規模を持つビルドはすべてこの形をたどる。
 
-1. **Open/save lifecycle.** Use `officecli open <file>` at the start and `officecli save <file>` at the end to flush to disk — `save` only writes and leaves the resident warm for follow-up edits; reach for `officecli close <file>` only to release the resident on a one-shot handoff. Both are always safe (never error or lose work). For many cells, use `batch`: **≤ 50 ops/block recommended; tested up to 80+ ops per block on pure value-set payloads with zero failures. Cross-sheet formula batches are the exception — run those non-resident, single heredoc (see Known Issues)**. **Flush only at the non-officecli boundary:** officecli's own reads always see your edits; run `save`/`close` only before a non-officecli program reads the file (openpyxl/pandas, Excel, a renderer, delivery).
-2. **Create or load.** `officecli create "$FILE"` (new) or `officecli view "$FILE" outline` (existing — get the lay of the land first).
-3. **Build incrementally.** One command, read the output, continue. After any structural op (new sheet, chart, named range, pivot), run `get` on it to confirm shape before stacking more on top.
-4. **Format.** Column widths, number formats, freeze panes, tab colors, header fills. Formatting is not optional polish — per "Requirements for Outputs" it is part of the deliverable.
-5. **Save, then reckon with the cache.** `officecli save <file>` writes to disk. Newly-added formulas ship without cached values; when a human opens the file in a spreadsheet app, the app recalculates and populates them. **But your downstream `INDEX/MATCH`, `SUMPRODUCT`, or any formula that references an upstream formula will cache whatever the upstream cached at write-time — often `0` or a stale value — and that cached lie survives into non-recalculating readers.** After any multi-formula build involving array formulas (`SUMPRODUCT`, `SUMIFS` with dynamic criteria) or cross-sheet chains, **re-touch every downstream cell** (run `set` again with the same formula) so the engine recomputes its cache from the freshly-cached upstream. ⚠️ Re-touch on cross-sheet chains via resident is unreliable (see Batch / resident caveats) — prefer non-resident `set` for the re-touch pass. Then `officecli get` a few downstream cells and eyeball that their `cachedValue=` is plausible. `validate` is safe with a resident open and itself flushes pending edits to disk (same as docx / pptx).
-6. **QA — assume there are problems.** See the QA section. You are not done when your last command exited 0; you are done after one fix-and-verify cycle finds zero new issues.
+1. **open/save ライフサイクル。** 最初に `officecli open <file>`、最後に `officecli save <file>` を実行してディスクにフラッシュする —— `save` は書き込みのみを行い、常駐（resident）は後続の編集のためにウォームな状態のまま残す；`officecli close <file>` は、ワンショットの引き渡しで常駐を解放したい場合にのみ使う。どちらも常に安全である（エラーになったり作業が失われたりすることはない）。多数のセルを扱う場合は `batch` を使う: **1ブロックあたり 50 操作以下を推奨。純粋な値設定ペイロードでは1ブロック80件以上でもテスト済みで失敗ゼロ。シート間数式のバッチはその例外であり、非常駐・単一ヒアドキュメントで実行する（後述の「既知の問題」参照）**。**フラッシュは officecli の外側の境界でのみ行う。** officecli 自身の読み取りは常にあなたの編集を反映するので、`save`/`close` は officecli 以外のプログラム（openpyxl/pandas、Excel、レンダラー、納品）がファイルを読む直前にのみ実行する。
+2. **作成またはロード。** `officecli create "$FILE"`（新規）または `officecli view "$FILE" outline`（既存 —— まず全体像を把握する）。
+3. **段階的に構築する。** 1コマンド実行 → 出力確認 → 次へ。構造的な操作（新しいシート、チャート、名前付き範囲、ピボット）の後は必ず `get` でその形を確認してから、その上に積み重ねる。
+4. **書式設定。** 列幅、数値書式、ウィンドウ枠の固定、タブの色、ヘッダーの塗りつぶし。書式は任意の仕上げ作業ではなく、「成果物への要件」に従って成果物の一部である。
+5. **保存し、それからキャッシュと向き合う。** `officecli save <file>` はディスクに書き込む。新規に追加された数式はキャッシュされた値を持たずに出荷される。人間がスプレッドシートアプリでファイルを開くと、アプリが再計算してキャッシュを埋める。**しかし、下流の `INDEX/MATCH`、`SUMPRODUCT`、あるいは上流の数式を参照するどの数式も、書き込み時に上流がキャッシュしていた値 —— しばしば `0` や古い値 —— をそのままキャッシュしてしまい、そのキャッシュされた嘘が再計算しないリーダーにまで残ってしまう。** 配列数式（`SUMPRODUCT`、動的条件付きの `SUMIFS`）やシート間の連鎖を含む複数数式のビルドの後は、**下流のすべてのセルを再タッチ**する（同じ数式で `set` を再実行する）ことで、新しくキャッシュされた上流の値からエンジンにキャッシュを再計算させる。⚠️ シート間の連鎖に対する常駐経由の再タッチは信頼性が低い（「バッチ／常駐の注意点」参照） —— 再タッチのパスには非常駐の `set` を優先する。その後 `officecli get` で下流のセルをいくつか確認し、`cachedValue=` が妥当であることを目視で確認する。`validate` は常駐が開いた状態でも安全であり、それ自体が保留中の編集をディスクにフラッシュする（docx / pptx と同様）。
+6. **QA —— 問題があることを前提とする。** QA の節を参照。最後のコマンドが 0 で終了したから完了なのではなく、修正と検証のサイクルを1回まわして新たな問題がゼロになって初めて完了である。
 
-## Quick Start
+## クイックスタート
 
-Minimal viable xlsx: 3 months of revenue + a total formula + column widths + a currency format. Adapt, don't copy-paste — your file, your data.
+最小限の xlsx: 3か月分の売上 + 合計の数式 + 列幅 + 通貨書式。そのままコピペせず、自分のファイル・自分のデータに合わせて調整すること。
 
 ```bash
 officecli create "$FILE"
@@ -147,11 +147,11 @@ officecli close "$FILE"
 officecli validate "$FILE"
 ```
 
-Verified: `validate` returns `no errors found`, `B5` resolves to `135000`. This is the shape of every build: open → set cells/formulas → format → close → validate.
+確認済み: `validate` は `no errors found` を返し、`B5` は `135000` に解決される。これがすべてのビルドの形である: open → セル／数式を set → 書式設定 → close → validate。
 
-## CSV / bulk import
+## CSV／一括インポート
 
-**Native `import` command (preferred for CSV/TSV).** Fastest path; loads a CSV into a sheet in one call. `--header` sets AutoFilter + freeze pane on row 1. Widths and `numFmt` still need a follow-up pass (per D-12 in Dashboard skill).
+**ネイティブな `import` コマンド（CSV/TSV には推奨）。** 最速の経路。CSV を一度の呼び出しでシートに読み込む。`--header` は AutoFilter とウィンドウ枠の固定を1行目に設定する。幅と `numFmt` は依然として後続のパスが必要（Dashboard スキルの D-12 参照）。
 
 ```bash
 officecli import "$FILE" /Sheet1 --file data.csv --header
@@ -159,10 +159,10 @@ officecli import "$FILE" /Sheet1 --file data.tsv --format tsv --header
 officecli import "$FILE" /Sheet1 --stdin --start-cell B2 < data.csv
 ```
 
-**Python + batch fallback** — use when you need custom type coercion, formula injection, or the CSV lives inside another data pipeline. Recipe for 600-6000+ cells:
+**Python + batch のフォールバック** —— カスタムの型変換、数式の注入、または CSV が別のデータパイプラインの一部である場合に使う。600〜6000 以上のセルに対するレシピ:
 
 ```python
-# gen_batch.py — produces batch chunks of 80 value-set ops each
+# gen_batch.py —— 1チャンクあたり80件の value-set 操作からなる batch チャンクを生成する
 import csv, json
 ops = []
 with open("data.csv") as f:
@@ -182,84 +182,84 @@ python gen_batch.py | while IFS= read -r chunk; do
 done
 ```
 
-Outcome: 648-row retail CSV (6490 cells) loads in ~30s, zero failures. Tune: start at 80 ops/chunk, drop to 40 if any chunk fails. Numeric type inference and formulas come later via targeted `set` — batch in this recipe is pure value injection.
+結果: 648行の小売 CSV（6490セル）が約30秒でロードされ、失敗ゼロ。チューニング: 1チャンク80操作から開始し、失敗するチャンクがあれば40に落とす。数値の型推論や数式は、この後にターゲットを絞った `set` で追加する —— このレシピにおける batch は純粋な値の注入である。
 
-## Reading & Analysis
+## 読み取りと分析
 
-Start wide, then narrow. `outline` first tells you what sheets exist and where the data is; jump into `view` / `get` / `query` only once you know where to look.
+広く始めて、それから絞り込む。まず `outline` でどのシートが存在し、データがどこにあるかを把握し、場所がわかってから初めて `view` / `get` / `query` に踏み込む。
 
-**Open the rendered workbook to eyeball your own work.**
-- `officecli view $FILE html` — Read the returned HTML to audit the rendered output. Each sheet is addressable, charts render inline. Catches `###`, placeholder leakage, pivot layout, row-height clipping.
-- `officecli watch $FILE` keeps a live preview running for the human user — they open it at their own discretion. Use when the user wants to watch along; agent self-check uses `view html` above.
-Use `view html` as your **first visual check after a batch of edits** — fix at source. For final visual verification, the user opens the `.xlsx` in their Excel / WPS / Numbers viewer.
+**レンダリングされたワークブックを開いて自分の作業を目視確認する。**
+- `officecli view $FILE html` —— 返された HTML を Read してレンダリング結果を監査する。各シートはアドレス可能で、チャートはインラインでレンダリングされる。`###`、プレースホルダーの漏出、ピボットのレイアウト、行の高さの切れなどを検出できる。
+- `officecli watch $FILE` は人間のユーザー向けにライブプレビューを立ち上げ続ける —— ユーザーが自分の判断で開く。ユーザーが一緒に見たい場合に使う。エージェント自身のセルフチェックには上記の `view html` を使う。
+バッチ編集の後の**最初の視覚チェック**として `view html` を使い、根本原因を修正する。最終的な視覚確認は、ユーザー自身が Excel / WPS / Numbers ビューアで `.xlsx` を開いて行う。
 
-**Orient.** Sheets, dimensions, formula counts.
+**方向づけ。** シート、次元、数式の件数。
 
 ```bash
 officecli view "$FILE" outline
 ```
 
-**Extract.** Plain text dump for content QA or LLM context; scope with `--start` / `--end` / `--cols` for big files.
+**抽出。** コンテンツ QA や LLM のコンテキスト用のプレーンテキストダンプ。大きなファイルには `--start` / `--end` / `--cols` で範囲を絞る。
 
 ```bash
 officecli view "$FILE" text --start 1 --end 50 --cols A,B,C
 ```
 
-Other `view` modes worth knowing: `annotated` (cell values + types/formulas + warnings), `stats` (numeric summaries), `issues` (broken formulas, empty sheets, missing refs).
+知っておくと役立つその他の `view` モード: `annotated`（セル値＋型／数式＋警告）、`stats`（数値のサマリー）、`issues`（壊れた数式、空のシート、欠落した参照）。
 
-**Round-trip dump.** `officecli dump "$FILE" [path]` serializes the workbook — or one worksheet (`/Sheet1`, `/sheet[N]`) — into a replayable batch JSON; `officecli batch new.xlsx --input dump.json` replays it. Use it to learn from an existing workbook's structure or clone/adapt a template instead of reading raw OOXML. Coverage per `dump --help`; subtree dumps don't carry workbook-level resources (settings, named ranges) — the replay target must already define them.
+**ラウンドトリップダンプ。** `officecli dump "$FILE" [path]` はワークブック —— または1つのワークシート（`/Sheet1`、`/sheet[N]`）—— を再生可能な batch JSON にシリアライズする。`officecli batch new.xlsx --input dump.json` で再生する。既存ワークブックの構造から学んだり、生の OOXML を読む代わりにテンプレートを複製・調整したりする用途に使う。カバレッジは `dump --help` を参照。サブツリーのダンプにはワークブックレベルのリソース（設定、名前付き範囲）は含まれない —— 再生先はそれらをあらかじめ定義しておく必要がある。
 
 ```bash
-officecli dump "$FILE" -o blueprint.json            # whole workbook
-officecli dump "$FILE" /Sheet1 -o sheet.json        # one worksheet
+officecli dump "$FILE" -o blueprint.json            # ワークブック全体
+officecli dump "$FILE" /Sheet1 -o sheet.json        # 1つのワークシート
 officecli batch new.xlsx --input blueprint.json
 ```
 
-**Inspect one element.** Use XPath-style paths. Always quote — shells glob `[N]`.
+**単一の要素を確認する。** XPath 風のパスを使う。シェルは `[N]` をグロブとして展開するので、常にクォートする。
 
 ```bash
-officecli get "$FILE" "/Sheet1/A1"            # one cell
-officecli get "$FILE" "/Sheet1/A1:D10"        # range
-officecli get "$FILE" "/Sheet1/chart[1]"      # chart
+officecli get "$FILE" "/Sheet1/A1"            # 単一セル
+officecli get "$FILE" "/Sheet1/A1:D10"        # 範囲
+officecli get "$FILE" "/Sheet1/chart[1]"      # チャート
 officecli get "$FILE" "/Sheet1/table[1]"      # ListObject
-officecli get "$FILE" "/namedrange[1]"        # workbook-level named range
+officecli get "$FILE" "/namedrange[1]"        # ワークブックレベルの名前付き範囲
 ```
 
-Add `--depth N` to expand children; add `--json` for machine output. Full element list: `officecli help xlsx`.
+子要素を展開するには `--depth N` を、機械可読な出力には `--json` を追加する。全要素の一覧は `officecli help xlsx`。
 
-**Query across the workbook.** CSS-like selectors. Use for systematic checks (formula coverage, error cells, empty headers) rather than hand-walking.
+**ワークブック全体をクエリする。** CSS ライクなセレクタ。1件ずつ手でたどるのではなく、体系的なチェック（数式のカバレッジ、エラーセル、空のヘッダー）に使う。
 
 ```bash
-officecli query "$FILE" 'cell:has(formula)'       # every formula cell
-officecli query "$FILE" 'cell:contains("#REF!")'  # broken references
-officecli query "$FILE" 'cell[type=Number]'       # typed filter
-officecli query "$FILE" 'Sheet1!B[value!=0]'      # sheet-scoped
+officecli query "$FILE" 'cell:has(formula)'       # すべての数式セル
+officecli query "$FILE" 'cell:contains("#REF!")'  # 壊れた参照
+officecli query "$FILE" 'cell[type=Number]'       # 型によるフィルタ
+officecli query "$FILE" 'Sheet1!B[value!=0]'      # シートスコープ
 ```
 
-Operators: `=`, `!=`, `~=` (contains), `>=`, `<=`, `[attr]` (exists).
+演算子: `=`、`!=`、`~=`（含む）、`>=`、`<=`、`[attr]`（存在確認）。
 
-**Merge cells shortcut.** `officecli query $FILE merge` or `mergedrange` — both are aliases for `mergeCell`. Returns every merged range in the workbook without hand-walking `<mergeCell>` entries.
+**マージセルのショートカット。** `officecli query $FILE merge` または `mergedrange` —— どちらも `mergeCell` のエイリアスである。`<mergeCell>` の各エントリを手でたどることなく、ワークブック内のすべての結合範囲を返す。
 
-**When the data is big enough that a row-walk is useless**, reach for Excel's own analytical elements:
+**行を一つずつたどるのが非効率なほどデータが大きい場合**は、Excel 自身の分析用要素に頼る:
 
-- Build a **pivot table** with `officecli add` (`--type pivottable`) to group/aggregate without writing 20 SUMIFs. Attach a **slicer** (`--type slicer`) to give the reader a filter UI.
-- Drop a **sparkline** (`--type sparkline`) in a row to show per-row trends — cheaper than one line chart per row and they print inline. `type` is a strict enum: **`line | column | stacked`** (plus aliases `winloss` / `win-loss` → `stacked`). Invalid `type=` values hard-fail — no silent fallback to `line` anymore.
-- Run `officecli help xlsx pivottable`, `officecli help xlsx slicer`, `officecli help xlsx sparkline` for the exact prop names.
+- `officecli add`（`--type pivottable`）で**ピボットテーブル**を構築し、20個の SUMIF を書かずにグループ化・集計する。**スライサー**（`--type slicer`）を付ければ、読み手にフィルタ用の UI を提供できる。
+- 行ごとのトレンドを示すには**スパークライン**（`--type sparkline`）を挿入する —— 行ごとに1本の折れ線グラフを作るよりも安価で、印刷時にもインラインで表示される。`type` は厳格な enum である: **`line | column | stacked`**（加えてエイリアス `winloss` / `win-loss` → `stacked`）。不正な `type=` の値は完全に失敗する —— もはや `line` へのサイレントなフォールバックはない。
+- 正確なプロパティ名は `officecli help xlsx pivottable`、`officecli help xlsx slicer`、`officecli help xlsx sparkline` で確認する。
 
-## Creating & Editing
+## 作成と編集
 
-Ninety percent of a build is cells, formulas, formatting, and one or two charts. The verbs: `add` (new element), `set` (change a prop), `remove`, `move`, `swap`, `batch`.
+ビルドの9割はセル、数式、書式設定、そして1〜2個のチャートである。動詞は: `add`（新規要素）、`set`（プロパティ変更）、`remove`、`move`、`swap`、`batch`。
 
-### Cells and formulas
+### セルと数式
 
-Set a value and its format in one call. Never write `=` at the start of a formula — the CLI strips it.
+値とその書式を1回の呼び出しで設定する。数式の先頭に `=` を書いてはならない —— CLI がそれを除去する。
 
 ```bash
 officecli set "$FILE" /Sheet1/B5 --prop formula="SUM(B2:B4)" --prop numFmt='$#,##0'
 officecli set "$FILE" /Sheet1/C5 --prop formula="B5/A5" --prop numFmt="0.0%"
 ```
 
-Structural properties (width, height, freeze, tabColor) live on row / col / sheet nodes:
+構造的なプロパティ（幅、高さ、ウィンドウ枠の固定、タブの色）は行／列／シートのノードに存在する:
 
 ```bash
 officecli set "$FILE" "/Sheet1/col[A]" --prop width=20
@@ -267,9 +267,9 @@ officecli set "$FILE" "/Sheet1/row[1]" --prop height=22
 officecli set "$FILE" "/Sheet1" --prop freeze=A2 --prop tabColor=1F4E79
 ```
 
-### Named ranges
+### 名前付き範囲
 
-Prefer named ranges over `$B$6` in formulas. They self-document (`GrowthRate` beats `$B$6`) and they let you move the assumption cell without breaking formulas. Because `ref` values contain both `!` and `$`, add them through a batch heredoc:
+数式中の `$B$6` よりも名前付き範囲を優先する。それらは自己文書化されており（`GrowthRate` は `$B$6` よりわかりやすい）、数式を壊さずに前提セルを移動できる。`ref` の値には `!` と `$` の両方が含まれるため、batch ヒアドキュメント経由で追加する:
 
 ```bash
 cat <<'EOF' | officecli batch "$FILE"
@@ -279,49 +279,49 @@ cat <<'EOF' | officecli batch "$FILE"
 EOF
 ```
 
-See `officecli help xlsx namedrange` for the full schema.
+完全なスキーマは `officecli help xlsx namedrange` を参照。
 
-**Batch JSON does NOT accept shell aliases.** Inside batch `props`, always use the full dotted name — `"font.color": "FF0000"`, `"font.size": 14`, never `"color": "FF0000"` (ambiguous: text vs fill). On a bare cell, even the shell form is rejected: `--prop color=1F4E79` errors with `ambiguous in cell context — use 'font.color' (text) or 'fill' (bg)`. Rule: in any batch JSON or cell prop, write `font.color` / `fill` explicitly. `parent` should be `"/"` for workbook-level elements and `"/SheetName"` for sheet-scoped; empty string is not equivalent.
+**batch の JSON はシェルのエイリアスを受け付けない。** batch の `props` の内部では、常にフルのドット付き名を使う —— `"font.color": "FF0000"`、`"font.size": 14` であり、`"color": "FF0000"`（テキストか塗りか曖昧）は使わない。素のセル上でも、シェル形式は拒否される: `--prop color=1F4E79` は `ambiguous in cell context — use 'font.color' (text) or 'fill' (bg)` というエラーになる。ルール: batch の JSON でもセルのプロパティでも、`font.color` / `fill` を明示的に書く。`parent` はワークブックレベルの要素では `"/"`、シートスコープの要素では `"/SheetName"` とする。空文字列はこれと同等ではない。
 
-### Charts
+### チャート
 
-Chart types live under `officecli help xlsx chart` — the enum is long (20+). Pick the right one for the message: column for category comparison, line for time series, pie only when slices are self-evidently proportional, scatter for correlation. Avoid exotic types unless they answer a specific question.
+チャートの種類は `officecli help xlsx chart` にある —— enum は長い（20種類以上）。伝えたいメッセージに合ったものを選ぶ: カテゴリ比較には column、時系列には line、円グラフはスライスの割合が自明な場合のみ、相関には scatter。特定の問いに答える場合を除き、特殊なタイプは避ける。
 
-**Three ways to feed chart data. Pick one per chart — mixing them at add-time is a common trap.**
+**チャートデータを供給する3つの方法。1チャートにつき1つを選ぶこと —— 作成時に複数を混在させるのはよくある落とし穴である。**
 
-| Form | Shape | When to use |
+| 方法 | 形 | 使いどころ |
 |---|---|---|
-| (a) inline `data` | `--prop data="Sales:100,200,300" --prop categories="Jan,Feb,Mar"` | Tiny demo charts, numbers you will not edit. Source of truth lives in the chart XML, not a cell. |
-| (b) 2D `dataRange` | `--prop dataRange="Sheet1!A1:B4"` (first col = categories, first row = header / series name) | Normal case. Must be **2-D** — single column fails with "Chart requires data". |
-| (c) dotted per-series | `--prop series1.name=Sales --prop series1.values="Sheet1!B2:B4" --prop series1.categories="Sheet1!A2:A4"` | Multi-series charts where each series points at non-contiguous ranges, or you want explicit series naming. `series1.values` alone (no `categories`) emits a chart with `1,2,3` as the x-axis. |
+| (a) インライン `data` | `--prop data="Sales:100,200,300" --prop categories="Jan,Feb,Mar"` | 編集しない小さなデモ用チャート。真実の源はセルではなくチャート XML の中にある。 |
+| (b) 2次元 `dataRange` | `--prop dataRange="Sheet1!A1:B4"`（最初の列がカテゴリ、最初の行がヘッダー／シリーズ名） | 通常のケース。**2次元**でなければならない —— 単一列は "Chart requires data" で失敗する。 |
+| (c) ドット区切りのシリーズごと指定 | `--prop series1.name=Sales --prop series1.values="Sheet1!B2:B4" --prop series1.categories="Sheet1!A2:A4"` | 各シリーズが連続しない範囲を指す複数シリーズのチャート、または明示的なシリーズ名が必要な場合。`series1.values` のみ（`categories` なし）だと、`1,2,3` を x 軸としたチャートになる。 |
 
-**The single-column trap.** `dataRange="Sheet1!B2:B13"` looks like "value column" but the engine rejects it with `Chart requires data`. Either widen the range to include the category column (`A2:B13`), or switch to form (c) with explicit `series1.categories`.
+**単一列の落とし穴。** `dataRange="Sheet1!B2:B13"` は「値の列」に見えるが、エンジンはこれを `Chart requires data` として拒否する。カテゴリ列を含むよう範囲を広げる（`A2:B13`）か、明示的な `series1.categories` を使う方法 (c) に切り替える。
 
-**Move / resize a chart after create:** `set chart[N] --prop anchor="F5:N25"` (also `--prop x= --prop y= --prop width= --prop height=`). **Series are still immutable** — to add/change a series, `officecli remove` the chart and `officecli add` with the full series list. Note `remove chart[1]` shifts `chart[2] → chart[1]` and re-add **appends at the end** — to preserve chart order, remove all and rebuild in order.
+**作成後にチャートを移動／リサイズする:** `set chart[N] --prop anchor="F5:N25"`（`--prop x= --prop y= --prop width= --prop height=` も使える）。**シリーズは依然として不変**である —— シリーズを追加・変更するには、`officecli remove` でチャートを削除し、`officecli add` で完全なシリーズリストを指定して再作成する。`remove chart[1]` は `chart[2] → chart[1]` のようにインデックスをシフトさせ、再追加は**末尾に追加される**点に注意 —— チャートの順序を維持するには、すべて削除してから順番通りに再構築する。
 
-**Anchor sizing.** No auto-fit. A column chart with 5-6 categories + 2 series needs roughly `A5:L22` (12 cols × 18 rows) to show all labels uncut. Narrower and X-axis labels clip; wider and the chart can split across pages on print/export. If in doubt, start narrow, preview via `view html` (Read the returned HTML path), widen in increments. Page layout (below) is the other half of the fix.
+**アンカーのサイズ調整。** 自動フィットは存在しない。5〜6カテゴリ×2シリーズの column チャートには、すべてのラベルが切れずに表示されるようにおおよそ `A5:L22`（12列×18行）が必要である。狭すぎると X 軸ラベルが切れ、広すぎると印刷／エクスポート時にチャートがページをまたいで分割されることがある。迷ったら狭めに始め、`view html` でプレビューし（返された HTML パスを Read する）、段階的に広げる。ページレイアウト（後述）はこの修正のもう半分である。
 
-**Chart `dataRange` — always prefix with the sheet.** Even when the chart lives on the same sheet, write `dataRange="Summary!A17:C22"`, not `A17:C22`. The sheet-less form works inconsistently; the prefixed form is 100% reliable.
+**チャートの `dataRange` —— 常にシート名を接頭辞につける。** チャートが同じシート上にある場合でも、`A17:C22` ではなく `dataRange="Summary!A17:C22"` と書く。シート名なしの形式は動作が不安定である。接頭辞付きの形式は100%信頼できる。
 
-officecli adds extended chart types the classic Excel object model lacks: `boxWhisker`, `waterfall`, `funnel`, `histogram`, `treemap`, `sunburst`, `pareto`. Use them when the data calls for them.
+officecli は、従来の Excel オブジェクトモデルにはない拡張チャートタイプを追加している: `boxWhisker`、`waterfall`、`funnel`、`histogram`、`treemap`、`sunburst`、`pareto`。データがそれを求めるときはこれらを使う。
 
-**NEVER put unreplaced template tokens in chart title / series name / legend / axis title.** `$fy$24`, `{var}`, `<TODO>`, `$VAR`, `{{placeholder}}` render **literally** in the legend — validate passes, but a CFO sees `$fy$24` where "FY2024" should be. Always bind to final text or a cell reference (`title="FY2024 Revenue"` or `series1.name="Sheet1!A1"`).
+**チャートのタイトル／シリーズ名／凡例／軸タイトルに未置換のテンプレートトークンを絶対に残さないこと。** `$fy$24`、`{var}`、`<TODO>`、`$VAR`、`{{placeholder}}` は凡例に**そのまま**レンダリングされる —— validate は通過するが、CFO には「FY2024」と表示されるべき場所に `$fy$24` が見える。常に確定したテキストかセル参照に紐づける（`title="FY2024 Revenue"` または `series1.name="Sheet1!A1"`）。
 
-### Conditional formatting
+### 条件付き書式
 
-Three common flavors, each with its own prop shape (consult `officecli help xlsx cf`):
+一般的な3つのフレーバー。それぞれ独自のプロパティ形状を持つ（`officecli help xlsx cf` を参照）:
 
-- **Color scales**: cells shaded on a gradient by value — `type=colorscale` with `minColor` / `midColor` / `maxColor`.
-- **Data bars**: in-cell bars showing magnitude — `type=databar`. Set explicit `min` / `max` for consistent scaling across a column; defaults are valid if you omit them.
-- **Formula rules** (the `formulacf` element): highlight row when a condition is true — `type=formula` with `formula="$C2>1000"` and a fill/font.
+- **カラースケール**: 値に応じてグラデーションで色付けされたセル —— `minColor` / `midColor` / `maxColor` を伴う `type=colorscale`。
+- **データバー**: 大きさを示すセル内バー —— `type=databar`。列全体で一貫したスケーリングをするために明示的な `min` / `max` を設定する。省略した場合のデフォルトも有効である。
+- **数式ルール**（`formulacf` 要素）: 条件が真のとき行をハイライトする —— `formula="$C2>1000"` を伴う `type=formula` と塗り／フォント設定。
 
-Rule: apply CF sparingly. A workbook where every cell is colored tells the reader nothing.
+ルール: 条件付き書式は控えめに適用する。すべてのセルが色付けされたワークブックは、読み手に何も伝えない。
 
-### Data validation
+### データ入力規則
 
-Input cells in trackers and templates MUST carry data validation. It's cheap and it stops entire classes of downstream bugs. **Three list-source patterns** — pick based on where the allowed values live.
+トラッカーやテンプレートの入力セルには、データ入力規則を必ず設定しなければならない。低コストで、下流のバグを丸ごと1クラス防げる。**リストソースの3パターン** —— 許可された値がどこにあるかで選ぶ。
 
-**(a) Inline list** — allowed values are short and fixed in the rule itself.
+**(a) インラインリスト** —— 許可された値が短く、ルール自体に固定されている場合。
 
 ```bash
 officecli add "$FILE" /Sheet1 --type validation \
@@ -330,7 +330,7 @@ officecli add "$FILE" /Sheet1 --type validation \
   --prop showError=true --prop errorTitle="Invalid" --prop error="Select from list"
 ```
 
-**(b) Named range (preferred for cross-sheet lookups)** — allowed values live in another sheet and may grow. Define the named range first, then reference it. Use a batch heredoc because `ref` contains `!` and `$`:
+**(b) 名前付き範囲（シート間参照で推奨）** —— 許可された値が別のシートにあり、増える可能性がある場合。まず名前付き範囲を定義し、それを参照する。`ref` に `!` と `$` が含まれるため、batch ヒアドキュメントを使う:
 
 ```bash
 cat <<'EOF' | officecli batch "$FILE"
@@ -341,7 +341,7 @@ cat <<'EOF' | officecli batch "$FILE"
 EOF
 ```
 
-**(c) Direct cross-sheet range** — no named range, raw `Lookups!$A$2:$A$4` inside `formula1`. Also needs a batch heredoc to keep `!` and `$` intact:
+**(c) 直接のシート間範囲** —— 名前付き範囲を使わず、`formula1` の中に生の `Lookups!$A$2:$A$4` を書く。これも `!` と `$` を無傷で保つため batch ヒアドキュメントが必要。
 
 ```bash
 cat <<'EOF' | officecli batch "$FILE"
@@ -351,19 +351,19 @@ cat <<'EOF' | officecli batch "$FILE"
 EOF
 ```
 
-If you write the cross-sheet variant as `--prop formula1=...` on the shell, the `!` gets shell-mangled into `\!` and the dropdown will silently fall back to no list. Verify with `officecli get "$FILE" /Sheet1/validation[N]` — `formula1=` must show a plain `!`, no backslash.
+シェル上で `--prop formula1=...` としてシート間バリアントを書くと、`!` がシェルによって `\!` に壊され、ドロップダウンは静かにリストなしにフォールバックする。`officecli get "$FILE" /Sheet1/validation[N]` で確認する —— `formula1=` はバックスラッシュのない素の `!` を表示していなければならない。
 
-Other common `type` values: `decimal`, `whole`, `date`, `textLength`, `custom`. See `officecli help xlsx validation` for operators and the full prop list.
+その他の一般的な `type` 値: `decimal`、`whole`、`date`、`textLength`、`custom`。演算子と全プロパティ一覧は `officecli help xlsx validation` を参照。
 
-### Other elements (one-liners)
+### その他の要素（ワンライナー）
 
-- **Tables** (ListObjects) — `add --type table` with a range; gives auto-filter + structured refs. `officecli help xlsx table`.
-- **Comments** — `add --type comment`; use for documenting hardcoded assumptions. `officecli help xlsx comment`.
-- **Sheet reordering** — `officecli move`, not `swap`. `swap` only works on row/cell paths.
+- **テーブル**（ListObjects）—— 範囲を指定した `add --type table`。オートフィルターと構造化参照を提供する。`officecli help xlsx table`。
+- **コメント** —— `add --type comment`。ハードコードされた前提条件を文書化するのに使う。`officecli help xlsx comment`。
+- **シートの並べ替え** —— `swap` ではなく `officecli move` を使う。`swap` は行／セルのパスにしか効かない。
 
-## Chart Axis-by-Role
+## チャート軸をロール別に操作する
 
-Editing a chart axis in place is cheaper than rebuilding the chart. Address axes by **role** (`value` = Y, `category` = X), not by index — the XML order isn't stable.
+チャートの軸をその場で編集する方が、チャートを作り直すより安価である。軸はインデックスではなく**ロール**（`value` = Y軸、`category` = X軸）でアドレス指定する —— XML の順序は安定していない。
 
 ```bash
 officecli get "$FILE" "/Sheet1/chart[1]/axis[@role=value]"
@@ -371,19 +371,19 @@ officecli set "$FILE" "/Sheet1/chart[1]/axis[@role=value]" --prop min=0 --prop m
 officecli set "$FILE" "/Sheet1/chart[1]/axis[@role=category]" --prop title="Month"
 ```
 
-Safe props: `title`, `min`, `max`, `majorGridlines`, `visible`, `labelRotation`.
+安全なプロパティ: `title`、`min`、`max`、`majorGridlines`、`visible`、`labelRotation`。
 
-## QA (Required)
+## QA（必須）
 
-**Assume there are problems. Your job is to find them.**
+**問題があることを前提にする。あなたの仕事はそれを見つけることである。**
 
-Your first workbook is almost never correct. Treat QA as a bug hunt, not a confirmation step. If you found zero issues on first inspection, you were not looking hard enough. The formulas look fine **until** you check two of them against source cells.
+最初のワークブックが正しいことはほとんどない。QA は確認作業ではなくバグハントとして扱う。最初の点検で何も問題が見つからなかったなら、それは十分に厳しく見ていない証拠である。数式は、ソースセルと突き合わせて確認するまでは問題なく見える。
 
-### Minimum cycle before "done"
+### 「完了」前の最小サイクル
 
-1. `officecli view "$FILE" issues` — empty sheets, broken formulas, missing refs.
-2. `officecli view "$FILE" annotated` (sample ranges) — values + types + warnings.
-3. For every Excel error type, query it:
+1. `officecli view "$FILE" issues` —— 空のシート、壊れた数式、欠落した参照。
+2. `officecli view "$FILE" annotated`（サンプル範囲）—— 値＋型＋警告。
+3. すべての Excel エラータイプについてクエリする:
    ```bash
    officecli query "$FILE" 'cell:contains("#REF!")'
    officecli query "$FILE" 'cell:contains("#DIV/0!")'
@@ -391,35 +391,35 @@ Your first workbook is almost never correct. Treat QA as a bug hunt, not a confi
    officecli query "$FILE" 'cell:contains("#NAME?")'
    officecli query "$FILE" 'cell:contains("#N/A")'
    ```
-4. `officecli validate "$FILE"` — safe with a resident open; `validate` flushes pending edits to disk itself.
-5. **Visual pass — walk every sheet via the HTML preview.** Run `officecli view "$FILE" html` and Read the returned HTML path. Each sheet renders with charts inline. Scan for `###`, truncated titles, placeholder tokens (`$fy$24`, `{var}`, `<TODO>`), sliced charts, white-slice pie charts, empty chart anchors — **STOP and fix before declaring done**. "validate pass" is not delivery; "the preview looks like a real workbook" is delivery. For human preview, run `officecli watch "$FILE"` (user opens the live preview at their own discretion) or have them open the `.xlsx` directly in Excel / WPS / Numbers.
-6. **Print layout fix (wide tables / multi-chart sheets).** When a sheet holds a chart or a wide table and the user will print it, set per-sheet page layout — but match the fit mode to the sheet's height:
+4. `officecli validate "$FILE"` —— 常駐が開いた状態でも安全。`validate` はそれ自体で保留中の編集をディスクにフラッシュする。
+5. **視覚パス —— HTML プレビューで全シートを歩く。** `officecli view "$FILE" html` を実行し、返された HTML パスを Read する。各シートはチャートをインラインでレンダリングして表示される。`###`、タイトルの切れ、プレースホルダートークン（`$fy$24`、`{var}`、`<TODO>`）、分割されたチャート、白いスライスの円グラフ、空のチャートアンカーがないか確認する —— **完了を宣言する前に立ち止まって修正する**。「validate を通過した」は納品ではない。「プレビューが本物のワークブックのように見える」ことが納品である。人間向けのプレビューには `officecli watch "$FILE"` を実行する（ユーザーが自分の判断でライブプレビューを開く）か、`.xlsx` を Excel / WPS / Numbers で直接開いてもらう。
+6. **印刷レイアウトの修正（幅広の表／複数チャートのシート）。** シートがチャートまたは幅広の表を持ち、ユーザーが印刷する場合、シートごとのページレイアウトを設定する —— ただし、fit モードはシートの高さに合わせる:
    ```bash
-   # Short summary / chart sheet → fit to one page.
+   # 短いサマリー／チャートシート → 1ページに収める。
    officecli set "$FILE" "/Summary" --prop orientation=landscape --prop fitToPage=true
-   # Tall data table → fit width only (fitToPage=true would crush all rows onto one unreadable page).
+   # 縦に長いデータ表 → 幅だけを収める（fitToPage=true だと全行が1ページに押し込まれ読めなくなる）。
    officecli set "$FILE" "/Data" --prop orientation=landscape --prop fitToPage=1x0
    ```
-   Outcome: charts/wide tables print without mid-chart splits; tall tables stay readable across natural page breaks. Apply to every sheet that holds a chart or a > 8-column table.
-7. If anything failed, fix, then **rerun the full cycle**. One fix commonly creates another problem.
+   結果: チャートや幅広の表はチャートの途中で分割されずに印刷され、縦長の表は自然なページ区切りのまま読みやすさを保つ。チャートを持つシート、または8列を超える表を持つシートすべてに適用する。
+7. 何か失敗した場合は修正し、**サイクル全体を再実行**する。1つの修正がもう1つの問題を生むことはよくある。
 
-`officecli view issues` + `view html` are the structural QA pair: `issues` catches broken formulas and empty sheets; `view html` (Read the returned HTML path) catches `###`, truncation, and token leakage. Chart fill colors / theme tints can vary across viewers — spot-check in the user's target viewer when color fidelity matters.
+`officecli view issues` と `view html` は構造的な QA のペアである: `issues` は壊れた数式と空のシートを検出し、`view html`（返された HTML パスを Read する）は `###`、切れ、トークン漏出を検出する。チャートの塗り色／テーマの色合いはビューアによって異なることがある —— 色の忠実度が重要な場合は、ユーザーの実際のターゲットビューアでスポットチェックする。
 
-### Formula verification checklist
+### 数式検証チェックリスト
 
-- [ ] Pick 2-3 formulas at random. Run `officecli get` on each. Confirm the formula string is what you intended **and** `cachedValue=` is what you expect — arithmetic in your head.
-- [ ] **Cached value sanity on every summary cell.** Any cell that aggregates (COUNTA / COUNTIF / SUMPRODUCT / INDEX&MATCH) must have a plausible `cachedValue`. If a progress tracker shows `199 / 199 / 100%` on a blank template, the cache is lying — re-touch the formula via `set` (forces recompute) or manually set a correct cached value. Do NOT ship "validate passes but the numbers are fiction".
-- [ ] **Spot-check one cell per numeric column.** `%` columns showing integer `0.0%` throughout means the denominator is wrong or the numerator is cached stale — investigate one cell, fix the pattern.
-- [ ] Ranges include every row: off-by-one on `SUM(B2:B12)` when data goes to `B13` is the most common bug.
-- [ ] Cross-sheet formulas (`Sheet1!A1`) contain no `\!`. If `officecli get` shows `Sheet1\!A1`, the `!` was shell-corrupted — delete and re-enter via batch/heredoc.
-- [ ] Named ranges (`officecli get "$FILE" "/namedrange[1]"`) point at what their names claim.
-- [ ] Every `/` denominator is guarded — `IFERROR(x/y, 0)` or `IF(y=0, 0, x/y)`.
-- [ ] Chart data vs source cells: for every chart with inline data, spot-check data points against `officecli get` of the source cells.
-- [ ] Chart title / series name / legend contain **no** unreplaced tokens (`$...$`, `{var}`, `<TODO>`). Grep the chart via `officecli get /Sheet1/chart[N]`.
+- [ ] 2〜3個の数式をランダムに選ぶ。それぞれに `officecli get` を実行する。数式の文字列が意図通りであること、**かつ** `cachedValue=` が期待通りであることを確認する —— 頭の中で計算する。
+- [ ] **すべてのサマリーセルについてキャッシュ値の妥当性を確認する。** 集計を行うセル（COUNTA / COUNTIF / SUMPRODUCT / INDEX＆MATCH）はすべて、妥当な `cachedValue` を持たなければならない。進捗トラッカーが空のテンプレート上で `199 / 199 / 100%` を表示している場合、そのキャッシュは嘘をついている —— `set` 経由で数式を再タッチする（再計算を強制する）か、正しいキャッシュ値を手動で設定する。「validate は通過するが数値はでたらめ」を出荷してはならない。
+- [ ] **数値列ごとに1セルをスポットチェックする。** `%` 列全体が整数の `0.0%` を表示している場合、分母が間違っているか分子が古いままキャッシュされている —— 1セルを調査し、パターンを修正する。
+- [ ] 範囲がすべての行を含んでいるか: データが `B13` まであるのに `SUM(B2:B12)` になっているような off-by-one は最もよくあるバグである。
+- [ ] シート間数式（`Sheet1!A1`）に `\!` が含まれていないか。`officecli get` が `Sheet1\!A1` を表示する場合、`!` はシェルによって壊されている —— 削除して batch／ヒアドキュメント経由で入れ直す。
+- [ ] 名前付き範囲（`officecli get "$FILE" "/namedrange[1]"`）が名前の示す通りの場所を指しているか。
+- [ ] すべての `/` の分母がガードされているか —— `IFERROR(x/y, 0)` または `IF(y=0, 0, x/y)`。
+- [ ] チャートデータとソースセル: インラインデータを持つすべてのチャートについて、`officecli get` によるソースセルの値とデータポイントをスポットチェックする。
+- [ ] チャートのタイトル／シリーズ名／凡例に未置換のトークン（`$...$`、`{var}`、`<TODO>`）が**ない**こと。`officecli get /Sheet1/chart[N]` でチャートを確認する。
 
-### Template QA
+### テンプレート QA
 
-When editing a template, check for leftover placeholders — they look like content and slip past `validate`:
+テンプレートを編集する際は、残存するプレースホルダーがないか確認する —— これらはコンテンツのように見え、`validate` をすり抜ける:
 
 ```bash
 officecli query "$FILE" 'cell:contains("{{")'
@@ -427,21 +427,21 @@ officecli query "$FILE" 'cell:contains("xxxx")'
 officecli query "$FILE" 'cell:contains("TBD")'
 ```
 
-### Fresh eyes
+### 新鮮な目で
 
-When you finish a workbook, open it fresh. Read `view text` / HTML preview top-to-bottom as if you are a new reviewer — look for formulas, numbers that look off, formatting inconsistency, missing data.
+ワークブックを仕上げたら、新規に開き直す。`view text` / HTML プレビューを、新しいレビュアーになったつもりで頭から最後まで読む —— 数式、おかしく見える数値、書式の不整合、欠落したデータを探す。
 
-### Honest limit
+### 正直な限界
 
-`validate` catches schema errors, not design errors. A workbook can pass `validate` with every number wrong. The checklist above — especially spot-checking formulas against source cells — is how you catch what validation can't.
+`validate` はスキーマエラーを検出するのであって、設計上の誤りは検出しない。ワークブックはすべての数値が間違っていても `validate` を通過し得る。上記のチェックリスト —— 特に数式をソースセルと突き合わせるスポットチェック —— が、validate では捉えられないものを捉える方法である。
 
-## Known Issues & Pitfalls
+## 既知の問題と落とし穴
 
-### The cross-sheet `!` trap (short)
+### シート間 `!` の罠（短縮版）
 
-Shells (bash history expansion, zsh splitting) and CLI arg parsing mangle `!` in `Sheet1!A1` into `\!`. A formula containing `\!` is silently broken — it renders as literal text and references nothing.
+シェル（bash のヒストリ展開、zsh の分割）と CLI の引数パースは、`Sheet1!A1` の中の `!` を `\!` に壊す。`\!` を含む数式は静かに壊れており —— リテラルなテキストとしてレンダリングされ、何も参照しない。
 
-**Fix.** Use a batch heredoc with single-quoted delimiter (`<<'EOF'`), which disables all shell expansion:
+**対処法。** シングルクォートのデリミタ（`<<'EOF'`）を使った batch ヒアドキュメントを使う。これによりすべてのシェル展開が無効になる:
 
 ```bash
 cat <<'EOF' | officecli batch "$FILE"
@@ -449,48 +449,48 @@ cat <<'EOF' | officecli batch "$FILE"
 EOF
 ```
 
-**Verify.** After writing, `officecli get` the cell; `formula=` must show a plain `!` with no backslash.
+**検証。** 書き込み後、そのセルに `officecli get` を実行する。`formula=` はバックスラッシュのない素の `!` を表示していなければならない。
 
-### CLI bug backlog (short)
+### CLI のバグ・バックログ（短縮版）
 
-CLI constraints and gaps to work around — not defects in the output file.
+回避すべき CLI の制約とギャップ —— 出力ファイルの欠陥ではない。
 
-- **Chart series are immutable after create** — to add/change a series: `remove` + `add` with the full series list. (Position is mutable: `set chart[N] --prop anchor=` / `x/y/width/height`.) `remove chart[N]` shifts subsequent indices down; re-add appends at end.
-- **Cross-sheet formula batches run fine through a resident** — a prior "deadlocks even at 3-5 ops" caution no longer reproduces. Pure value-set batches stay reliable at 50-80+ ops too. If you ever hit a hang, fall back to a non-resident one-big-batch or individual `set`. **Multiple resident processes on the same file/machine can still contend** — expect non-deterministic hangs if another agent/session holds a resident on the same file.
-- **Conditional formatting naming asymmetry** — the element name for `--type` is `conditionalformatting`; the path suffix is `/cf[N]`. Use `officecli help xlsx conditionalformatting` for schema, `/cf[N]` for paths.
-- **Sheet `position` prop on add** — help says Add processes `position`, but the prop is often ignored. Reorder with `officecli move --index` / `--after` / `--before` after creating the sheet.
-- **`remove /sheet[N]` cascade guard** — rejects sheet remove/rename when the sheet is referenced by validation / conditional format / sparkline / hyperlink / named range on another sheet. Remove those dependent elements first, then remove the sheet.
-- **Batch JSON rejects cell `color` alias** — inside batch `props`, `"color": "FF0000"` errors `ambiguous in cell context — use 'font.color' (text) or 'fill' (bg)`. The CLI at shell level accepts `--prop color=...` / `--prop size=14` as aliases on non-cell elements, but inside batch JSON on a cell always write the full dotted name: `"font.color"`, `"font.size"`, `"font.name"`.
+- **チャートのシリーズは作成後は不変** —— シリーズを追加・変更するには: 完全なシリーズリストで `remove` してから `add` する（位置は可変: `set chart[N] --prop anchor=` / `x/y/width/height`）。`remove chart[N]` は後続のインデックスを下にシフトさせ、再追加は末尾に追加される。
+- **シート間数式の batch は常駐経由でも問題なく動作する** —— 以前の「3〜5操作でもデッドロックする」という注意はもはや再現しない。純粋な値設定の batch も50〜80操作以上で安定している。もしハングに遭遇したら、非常駐の1つの大きな batch か、個別の `set` にフォールバックする。**同一ファイル／マシン上で複数の常駐プロセスが動いていると、依然として競合し得る** —— 別のエージェント／セッションが同じファイルの常駐を保持している場合、非決定的なハングが起こり得る。
+- **条件付き書式の命名の非対称性** —— `--type` の要素名は `conditionalformatting` だが、パスのサフィックスは `/cf[N]` である。スキーマには `officecli help xlsx conditionalformatting`、パスには `/cf[N]` を使う。
+- **add 時のシート `position` プロパティ** —— ヘルプには Add が `position` を処理すると書かれているが、このプロパティはしばしば無視される。シート作成後に `officecli move --index` / `--after` / `--before` で並べ替える。
+- **`remove /sheet[N]` のカスケードガード** —— 別のシートのデータ入力規則／条件付き書式／スパークライン／ハイパーリンク／名前付き範囲から参照されているシートの削除／リネームを拒否する。まずそれらの依存要素を削除してから、シートを削除する。
+- **batch の JSON はセルの `color` エイリアスを拒否する** —— batch の `props` の内部で `"color": "FF0000"` はエラー `ambiguous in cell context — use 'font.color' (text) or 'fill' (bg)` になる。シェルレベルの CLI はセル以外の要素に対しては `--prop color=...` / `--prop size=14` をエイリアスとして受け付けるが、batch の JSON でセルに対して書く場合は常にフルのドット付き名を書く: `"font.color"`、`"font.size"`、`"font.name"`。
 
-### Renderer caveats (cross-viewer color fidelity)
+### レンダラーの注意点（ビューア間の色の忠実度）
 
-`officecli view html` is the right tool for structural QA (overflow, truncation, placeholder leakage, layout) — Read the returned HTML path. Some chart rendering details vary across the viewer the end user opens the file in. Observed divergences:
+`officecli view html` は構造的な QA（あふれ、切れ、プレースホルダーの漏出、レイアウト）に適したツールである —— 返された HTML パスを Read する。チャートのレンダリングの一部の細部は、エンドユーザーがファイルを開くビューアによって異なる。観測された相違:
 
-- **Pie / doughnut fill colors may collapse to a single theme tint** in some viewers (slices look "all white" or "all one color"). The file may be fine in the user's target viewer.
-- **Line chart / column chart series colors may drift** from the workbook theme in some viewers.
-- **Form-control checkboxes may render as double-boxed** in some viewers.
+- **円グラフ／ドーナツグラフの塗り色が、一部のビューアでは単一のテーマの色合いに潰れることがある**（スライスが「すべて白」または「すべて同色」に見える）。ファイル自体はユーザーのターゲットビューアでは問題ない場合がある。
+- **折れ線グラフ／棒グラフのシリーズの色が、一部のビューアではワークブックのテーマからずれることがある。**
+- **フォームコントロールのチェックボックスが、一部のビューアでは二重枠として表示されることがある。**
 
-Before calling a color or chart "broken", open the file in the user's actual target viewer. If it looks correct there, the problem is viewer rendering, not data — do not chase it. The CLI's structural checks (`###`, truncation, placeholder text, layout) remain authoritative.
+色やチャートを「壊れている」と判断する前に、ユーザーの実際のターゲットビューアでファイルを開く。そこで正しく見えるなら、問題はデータではなくビューアのレンダリングであり、追いかける必要はない。CLI の構造的チェック（`###`、切れ、プレースホルダーテキスト、レイアウト）が引き続き権威あるものである。
 
-### Escape layers (shell quoting is above; these are the extras)
+### エスケープの階層（シェルクォーティングは上で扱った。これらはその追加分）
 
-`$` is the shell layer (single-quote it, above). `\n` / `\t` in a prop value ARE interpreted by the CLI into a real newline / tab. Two more layers:
+`$` はシェル層の話であり（前述の通りシングルクォートで対処する）、プロパティ値中の `\n` / `\t` は CLI によって実際の改行／タブに解釈される。さらに2つの層がある:
 
-- **JSON level (batch).** Standard JSON escapes — `"\n"`, `"\t"`, `"\""`. A real backslash in the final string is `"\\\\"`.
-- **Excel level.** `\n` in a cell is a real line break — pair with `--prop wrapText=true` so Excel shows the wrap. Works in a shell-quoted prop directly (`--prop value='a\nb'`); `"\n"` inside batch JSON gives the same. When in doubt, `officecli get` the cell and compare character-for-character.
+- **JSON レベル（batch）。** 標準的な JSON エスケープ —— `"\n"`、`"\t"`、`"\""`。最終文字列中の実際のバックスラッシュは `"\\\\"` になる。
+- **Excel レベル。** セル内の `\n` は実際の改行である —— `--prop wrapText=true` と組み合わせて、Excel に折り返しを表示させる。シェルでクォートされたプロパティに直接書いても動く（`--prop value='a\nb'`）。batch JSON 内の `"\n"` も同じ結果になる。迷ったら、`officecli get` でセルを確認し、文字単位で比較する。
 
-### Other common pitfalls
+### その他のよくある落とし穴
 
-| Pitfall | Fix |
+| 落とし穴 | 対処法 |
 |---|---|
-| `--name "foo"` | All attrs go through `--prop`: `--prop name="foo"` |
-| Guessing a prop name | `officecli help xlsx <element>` — don't improvise |
-| `--prop color=...` on a cell | Ambiguous — use `font.color` (text) or `fill` (bg). Also applies inside batch JSON: always use full dotted names, never shell aliases |
-| `#FF0000` hex colors | Drop the `#`: `FF0000` |
-| `--index` vs `[N]` | `--index` is 0-based (array); `[N]` paths are 1-based (XPath) |
-| Unquoted `[N]` in zsh/bash | Quote every path: `"/Sheet1/row[1]"` |
-| Sheet name with spaces | Quote full path: `"/My Sheet/A1"` |
-| Year showing as `2,026` | `--prop type=string` or `numFmt="@"` |
-| Modifying a file open in Excel | Close it in Excel first |
-| `swap` not reordering sheets | `swap` is for rows/cells. Use `move --after` / `--before` / `--index` for sheets |
-| Cached values missing after write | New formulas get cached values when a human opens the file; `validate` accepts them either way |
+| `--name "foo"` | すべての属性は `--prop` 経由: `--prop name="foo"` |
+| プロパティ名を推測する | `officecli help xlsx <element>` —— 即興で済ませない |
+| セルに `--prop color=...` | 曖昧 —— `font.color`（テキスト）または `fill`（背景）を使う。batch JSON の内部でも同様に、シェルのエイリアスではなく常にフルのドット付き名を使う |
+| `#FF0000` の16進カラー | `#` を外す: `FF0000` |
+| `--index` と `[N]` | `--index` は0始まり（配列）; `[N]` パスは1始まり（XPath） |
+| zsh/bash で `[N]` をクォートし忘れる | すべてのパスをクォートする: `"/Sheet1/row[1]"` |
+| スペースを含むシート名 | パス全体をクォートする: `"/My Sheet/A1"` |
+| 年が `2,026` として表示される | `--prop type=string` または `numFmt="@"` |
+| Excel で開いたままのファイルを変更する | 先に Excel 側でファイルを閉じる |
+| `swap` がシートを並べ替えない | `swap` は行／セル用。シートには `move --after` / `--before` / `--index` を使う |
+| 書き込み後にキャッシュ値が欠落する | 人間がファイルを開いたときに新規数式へキャッシュ値が付与される; `validate` はどちらの状態でも受け付ける |
